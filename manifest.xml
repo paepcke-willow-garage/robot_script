@@ -1,0 +1,19 @@
+<package>
+  <description brief="robot_script">
+
+     robot_script
+
+  </description>
+  <author>Andreas Paepcke</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/robot_script</url>
+  <depend package="rospy"/>
+  <depend package="actionlib"/>
+  <depend package="pr2_gripper_sensor_action"/>
+  <depend package="pr2_gripper_sensor_controller"/>
+  <depend package="pr2_gripper_sensor_msgs"/>
+
+</package>
+
+
