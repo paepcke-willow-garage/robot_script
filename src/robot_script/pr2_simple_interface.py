@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # Scroll down for main program
 
+# Modifications from original:
+#   o replaced print with rospy.loginfo/logdebug 
+#   o removed rel()
+#   o removed rospy.init_node(): done in robot_scripting.
+
 import roslib
 roslib.load_manifest('pr2_simple_interface')
 import rospy
@@ -60,8 +65,7 @@ def pose_torso(position, dur):
    pose_(position, joints, traj_client_torso, dur)
 
 def actionClient(topic, t):
-    if debug:
-      print t
+    rospy.logdebug(str(t));
     c = actionlib.SimpleActionClient(topic, t)
     c.wait_for_server()
     return c
@@ -77,13 +81,8 @@ class Gripper:
         pass
     
     # release the gripper
-    def rel(self, s):
-        print "Please use gripper.release() instead of gripper.rel()"
-        self.release(s)
-
-    # release the gripper
     def release(self, s):
-        print "Release gripper:", convert_s(s)
+        rospy.loginfo("Release gripper:" + str(convert_s(s)));
         self.pose(s, 0.09) # position open (9 cm)
 
     # open the gripper to a specified position
@@ -93,7 +92,7 @@ class Gripper:
         if pos > 0.09:
            pos = 0.09
 
-        print "Set gripper %s to %d"%(convert_s(s), pos)
+        rospy.loginfo("Set gripper %s to %d"%(convert_s(s), pos));
         openg = Pr2GripperCommandGoal()
         openg.command.position = pos    # position
         openg.command.max_effort = -1.0  # Do not limit effort (negative)
@@ -104,7 +103,7 @@ class Gripper:
 
     # close the gripper
     def close(self, s):
-        print "Close gripper:", convert_s(s) 
+        rospy.loginfo("Close gripper:" + str(convert_s(s))) 
         self.pose(s, 0.002) # closed position (0.002m spacing)
 
     # wait for the gripper action to complete
@@ -122,7 +121,7 @@ class Gripper:
         
         if sim:
             rospy.sleep(1)
-            print "Simulating a slap"
+            rospy.loginfo("Simulating a slap")
             self.rel(s)
         else:
             if(s == LEFT or s == BOTH):
@@ -133,7 +132,7 @@ class Gripper:
     #Returns the current state of the action
     def slapDone(self, s):
         if sim:
-           print "slapDone always true in simulation"
+           rospy.loginfo("slapDone always true in simulation")
            return True
         else:
            SUCCEEDED = 3 #Hack
@@ -146,7 +145,7 @@ class Gripper:
            return False
 
     def wait_for_slap(self, s):
-        print "Wait for slap: ", convert_s(s)
+        print "Wait for slap: " + str(convert_s(s))
         self.slap(s)
         while not self.slapDone(s):
             rospy.sleep(0.01)
@@ -156,10 +155,10 @@ class Gripper:
         self.slap(BOTH)
         while True:
             if (self.slapDone(LEFT)):
-                print "Left arm slapped"
+                rospy.loginfo("Left arm slapped")
                 return LEFT
             if (self.slapDone(RIGHT)):
-                print "Right arm slapped"
+                rospy.loginfo("Right arm slapped")
                 return RIGHT
             rospy.sleep(0.01)
 
@@ -174,21 +173,21 @@ class RobotArm:
     def move_to(self, goal, s, dur=2.0):
         positions = [ a * math.pi / 180.0 for a in goal ]
         if (s == RIGHT):
-            print "Moving right arm to:", goal
+            rospy.loginfo("Moving right arm to:" + str(goal))
             self.r = positions
             self.dur = dur
             pose_r(positions, dur)
             arm = True
         if (s == LEFT):
-            print "Moving left arm to:", goal
+            rospy.loginfo("Moving left arm to:" + str(goal))
             self.l = positions
             self.dur = dur
             pose_l(positions, dur)
         if (s == BOTH):
-            print "WARNING: you can't send a goal of both to the arms"
+            rospy.loginfo("WARNING: you can't send a goal of both to the arms")
 
     def wait_for(self, s):
-        print "Wait for arm:", convert_s(s)
+        rospy.loginfo("Wait for arm:" + str(convert_s(s)))
         if (s == LEFT or s == BOTH):
             traj_client_l.wait_for_result()
         if (s == RIGHT or s == BOTH):
@@ -196,13 +195,13 @@ class RobotArm:
 
     def mirror(self, s):
         if ( s == RIGHT ):
-           print "Left arm mirroring right arm"
+           rospy.loginfo("Left arm mirroring right arm")
            positions = self.r
            for i in [0, 2, 4, 6]:
               positions[i] = -positions[i]
            pose_l(positions, self.dur)
         if ( s == LEFT ):
-           print "Right arm mirroring left arm"
+           rospy.loginfo("Right arm mirroring left arm")
            positions = self.l
            for i in [0, 2, 4, 6]:
               positions[i] = -positions[i]
@@ -215,7 +214,7 @@ class Head:
         pass
 
     def look_at(self, x, y, z, dur=1.0):
-        print "Look at:", x, y, z
+        rospy.loginfo("Look at:" + str(x) + str(y) + str(z))
         g = PointHeadGoal()
         g.target.header.frame_id = 'base_link'
         g.target.point.x = x
@@ -227,12 +226,12 @@ class Head:
 
     def look(self, x, y, dur=1.0):
         pose = [ x * math.pi / 180.0, y * math.pi / 180.0 ]
-        print "Look: ", pose
+        rospy.loginfo("Look: " + str(pose))
         pose_head(pose, dur)
         self.mode = 2
 
     def look_at_face(self):
-        print "Looking at a face"
+        rospy.loginfo("Looking at a face")
         if sim:
             g = PointHeadGoal()
             g.target.header.frame_id = 'base_link'
@@ -272,7 +271,7 @@ class Head:
 
 
     def random_look_at_face(self):
-        print "Looking at a face"
+        rospy.loginfo("Looking at a face")
         if sim:
             g = PointHeadGoal()
             g.target.header.frame_id = 'base_link'
@@ -300,14 +299,21 @@ class Head:
 
                     dist = f.face_positions[i].pos.x*f.face_positions[i].pos.x + f.face_positions[i].pos.y*f.face_positions[i].pos.y\
  + f.face_positions[i].pos.z*f.face_positions[i].pos.z
-                    print "This face has position and dist ", f.face_positions[i].pos.x, f.face_positions[i].pos.y, f.face_positions[i].pos.z, dist
+                    rospy.loginfo("This face has position and dist " +
+                                  str(f.face_positions[i].pos.x) +
+                                  str(f.face_positions[i].pos.y) +
+                                  str(f.face_positions[i].pos.z) +
+                                  str(dist))
                     if dist < closest_dist and f.face_positions[i].pos.y > -1.0 :
                         closest = i
                         closest_dist = dist
                         break
 
                 if closest > -1:
-                    print "Turning to face ",  f.face_positions[closest].pos.x,  f.face_positions[closest].pos.y,  f.face_positions[closest].pos.z
+                    rospy.loginfo("Turning to face " +
+                                  str(f.face_positions[closest].pos.x) +
+                                  str(f.face_positions[closest].pos.y) +
+                                  str(f.face_positions[closest].pos.z))
                     g = PointHeadGoal()
                     g.target.header.frame_id = f.face_positions[closest].header.frame_id
                     g.target.point.x = f.face_positions[closest].pos.x
@@ -319,7 +325,7 @@ class Head:
 
 
     def wait_for(self):
-        print "Wait for head positioning"
+        rospy.loginfo("Wait for head positioning")
         if self.mode == 1:
             head_client.wait_for_result()
         if self.mode == 2:
@@ -336,17 +342,16 @@ class Torso:
            h = 0.3
         if h < 0:
            h = 0
-        print "Setting torso height to", h
+        rospy.loginfo("Setting torso height to" + str(h))
         pose_torso([h], dur)
 
     def wait_for(self):
-       print "Waiting for torso"
+       rospy.loginfo("Waiting for torso")
        traj_client_torso.wait_for_result();
 
 class Sound(SoundClient):
    def __init__(self):
-      if debug:
-         print "Initializing Sound Client"
+      rospy.logdebug("Initializing Sound Client")
       SoundClient.__init__(self)
       # wait for subscribers
       timeout = 10
@@ -357,7 +362,7 @@ class Sound(SoundClient):
             rospy.sleep(1)
 
    def say(self, text):
-      print "Saying: \"%s\""%text
+      rospy.loginfo("Saying: \"%s\"" % str(text))
       SoundClient.say(self, text)
 
 def hug():
@@ -365,17 +370,15 @@ def hug():
    hug_client = rospy.ServiceProxy('/pr2_props/hug', std_srvs.srv.Empty)
    try:
       hug_client()
-      print "Hug successful!"
+      rospy.loginfo("Hug successful!")
    except rospy.ServiceException, e:
-      print "Hug service call failed"
+      rospy.loginfo("Hug service call failed")
 
 
 def start(d = False):
   global debug
   debug = d
-#  if debug:
-#      print "Initializing pr2_simple_interface"
-#  rospy.init_node('pr2_simple_interface')
+  rospy.logdebug("Initializing pr2_simple_interface")
 
   global traj_client_r
   global traj_client_l
@@ -412,5 +415,4 @@ def start(d = False):
   traj_client_head = TrajClient('head_traj_controller/joint_trajectory_action')
 
   
-  if debug:
-     print "pr2_simple_interface init done"
+  rospy.logdebug("pr2_simple_interface init done")

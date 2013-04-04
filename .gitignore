@@ -2,3 +2,4 @@ bin
 build
 cmake_install.cmake
 *.pyc
+.project

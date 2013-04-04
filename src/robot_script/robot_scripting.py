@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+
+'''
+Module for simple scripting of robot actions. Uses Austin Hendrix's
+pr2_simple_interface underneath. Adds:
+   - Control of individual arm joints, in addition to the all-joints versions
+   - Sensor reading, including state of each arm joint
+   - Arrangement to anticipate scripting for other types of robots
+'''
+
 import roslib
 roslib.load_manifest('proximity_animation')
 roslib.load_manifest('geometry_msgs')
@@ -26,23 +35,37 @@ from pr2_controllers_msgs.msg import *
 from sensor_msgs.msg import JointState 
 
 import pr2_simple_interface
-from pr2_simple_interface import Gripper
-from pr2_simple_interface import RobotArm
-from pr2_simple_interface import Torso
-from pr2_simple_interface import Head
 
-from pr2_simple_interface import LEFT,RIGHT,BOTH
+	# ----------------  Abstract Class RobotScript   -----------------------
 
 class RobotScript(object):
 	'''
-	Scripting for PR2 robots.
+	Abstract class: Scripting for robots. Subclasses implement scripting
+	for different types of robots. This class doesn't have much now,
+	but might get enriched when different robot is addressed.
 	'''
-	gripper  = Gripper()
-	robotArm = RobotArm()
-	torso    = Torso()
-	head     = Head()
 	
-	joint_observer = None
+	# ----------------  Private Methods and Classes   -----------------------
+
+	def degree2rad(self, deg):
+		return numpy.pi*deg/180.0
+
+	def rad2degree(self, rad):
+		return 180.0*rad/numpy.pi
+	
+
+	# ----------------  Class Pr2RobotScript  -----------------------
+	
+class PR2RobotScript(RobotScript):
+	'''
+	Scripting for PR2 robots. 
+	'''
+	gripper  = pr2_simple_interface.Gripper()
+	robotArm = pr2_simple_interface.RobotArm()
+	torso    = pr2_simple_interface.Torso()
+	head     = pr2_simple_interface.Head()
+	
+	sensor_observer = None
 	initialized = False
 	
 	LEFT  = pr2_simple_interface.LEFT
@@ -57,79 +80,77 @@ class RobotScript(object):
 	@staticmethod	
 	def initialize():
 
-		if RobotScript.initialized:
+		if PR2RobotScript.initialized:
 			return
+
 		rospy.init_node('robot_scripts', anonymous=True)
 		pr2_simple_interface.start(d=True)
-		RobotScript.joint_observer = JointObserver()
-		RobotScript.joint_observer.start()
-		RobotScript.initialized = True;
+		sensor_observer = PR2RobotScript.PR2SensorObserver()
+		sensor_observer.start()
+		PR2RobotScript.initialized = True;
 		
-		#RobotScript.tiltHead(90);
-		#RobotScript.panHead(150);
-		#RobotScript.openGripper(RIGHT)
-		#RobotScript.closeGripper(RIGHT)
+		#PR2RobotScript.tiltHead(90);
+		#PR2RobotScript.panHead(150);
+		#PR2RobotScript.openGripper(RIGHT)
+		#PR2RobotScript.closeGripper(RIGHT)
 
 	@staticmethod
 	def tiltHead(newVal):
-		if not RobotScript.initialized:
-			RobotScript.initialize()
+		if not PR2RobotScript.initialized:
+			PR2RobotScript.initialize()
 		pass
 		
 	@staticmethod		
 	def openGripper(side):
-		if not RobotScript.initialized:
-			RobotScript.initialize()
-		RobotScript.gripper.release(side)
+		if not PR2RobotScript.initialized:
+			PR2RobotScript.initialize()
+		PR2RobotScript.gripper.release(side)
 
 	@staticmethod
 	def closeGripper(side):
-		if not RobotScript.initialized:
-			RobotScript.initialize()
-		RobotScript.gripper.close(side)
+		if not PR2RobotScript.initialized:
+			PR2RobotScript.initialize()
+		PR2RobotScript.gripper.close(side)
 
 	@staticmethod
 	def panHead(newVal):
-		if not RobotScript.initialized:
-			RobotScript.initialize()
+		if not PR2RobotScript.initialized:
+			PR2RobotScript.initialize()
 		pass
 		
-	# ----------------  Private Methods and Classes   -----------------------
-
-	def degree2rad(self, deg):
-		return numpy.pi*deg/180.0
-
-	def rad2degree(self, rad):
-		return 180.0*rad/numpy.pi
-
-class JointObserver(object):
-
-    def __init__(self):
-        super(JointObserver, self).__init__()
-        self._latest_joint_state = None
-        self._subscriber = None
-        self._jointPositions = {}
-        self._jointVelocities = {}
-
-    def start(self):
-        rospy.loginfo('JointObserver.start()')
-        if self._subscriber is not None:
-            self._subscriber.unregister()
-        self._subscriber = rospy.Subscriber('/joint_states', JointState, self._receive_joint_states)
-
-    def stop(self):
-        rospy.loginfo('JointObserver.stop()')
-        if self._subscriber is not None:
-            self._subscriber.unregister()
-            self._subscriber = None
-
-    def _receive_joint_states(self, joint_state_msg):
-		self._latest_joint_state = joint_state_msg
-		for i in range(len(joint_state_msg.name)):
-			self._jointPositions[joint_state_msg.name[i]] = joint_state_msg.position[i]
-			self._jointVelocities[joint_state_msg.name[i]] = joint_state_msg.velocity[i]
+	# ----------------  Class Pr2SensorObserver   -----------------------		
 		
-		#rospy.loginfo("Joint state: " + str(self._latest_joint_state))
+	class PR2SensorObserver(object):
+		'''
+		Implements sensor reading from PR2 robot.
+		'''
+	
+		def __init__(self):
+		    super(PR2RobotScript.PR2SensorObserver, self).__init__()
+		    self._latest_joint_state = None
+		    self._subscriber = None
+		    self._jointPositions = {}
+		    self._jointVelocities = {}
+		
+		def start(self):
+		    rospy.loginfo('PR2SensorObserver.start()')
+		    if self._subscriber is not None:
+		        self._subscriber.unregister()
+		    self._subscriber = rospy.Subscriber('/joint_states', JointState, self._receive_joint_states)
+		
+		def stop(self):
+		    rospy.loginfo('PR2SensorObserver.stop()')
+		    if self._subscriber is not None:
+		        self._subscriber.unregister()
+		        self._subscriber = None
+		
+		def _receive_joint_states(self, joint_state_msg):
+			self._latest_joint_state = joint_state_msg
+			for i in range(len(joint_state_msg.name)):
+				self._jointPositions[joint_state_msg.name[i]] = joint_state_msg.position[i]
+				self._jointVelocities[joint_state_msg.name[i]] = joint_state_msg.velocity[i]
+			
+			#rospy.loginfo("Joint state: " + str(self._latest_joint_state))
 
 
 if __name__ == "__main__":
