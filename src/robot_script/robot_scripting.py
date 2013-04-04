@@ -38,8 +38,12 @@ from sensor_msgs.msg import JointState
 import pr2_simple_interface
 
 class Units:
-	ANGULAR  = 0;
-	DISTANCE = 1;
+    ANGULAR  = 0;
+    DISTANCE = 1;
+
+class Tolerances:
+    ANGULAR  = 6;     # +/- degrees
+    DISTANCE = 0.01   # +/- meters
 
     # ----------------  Abstract Class RobotScript   -----------------------
 
@@ -127,22 +131,22 @@ class PR2RobotScript(RobotScript):
         # Ditch trailing comma:
         PR2RobotScript.jointsStr = PR2RobotScript.jointsStr[:-2];   
 
-		# Build dict of methods that wait for particular joints to finish:
+        # Build dict of methods that wait for particular joints to finish:
         for jName in ['head_tilt_joint', 'head_pan_joint']:
-			PR2RobotScript.pr2_joint_wait_methods[jName] = PR2RobotScript.head.wait_for;
+            PR2RobotScript.pr2_joint_wait_methods[jName] = PR2RobotScript.head.wait_for;
 
         for jName in ['l_shoulder_pan_joint', 'l_shoulder_lift_joint',
-					  'l_upper_arm_roll_joint', 'l_elbow_flex_joint',
-					  'l_forearm_roll_joint', 'l_wrist_flex_joint',
-					  'l_wrist_roll_joint']:
-			PR2RobotScript.pr2_joint_wait_methods[jName] = partial(PR2RobotScript.robotArm.wait_for, PR2RobotScript.LEFT);
-		
+                      'l_upper_arm_roll_joint', 'l_elbow_flex_joint',
+                      'l_forearm_roll_joint', 'l_wrist_flex_joint',
+                      'l_wrist_roll_joint']:
+            PR2RobotScript.pr2_joint_wait_methods[jName] = partial(PR2RobotScript.robotArm.wait_for, PR2RobotScript.LEFT);
+        
         for jName in ['r_shoulder_pan_joint', 'r_shoulder_lift_joint',
-					  'r_upper_arm_roll_joint', 'r_elbow_flex_joint',
-					  'r_forearm_roll_joint', 'r_wrist_flex_joint',
-					  'r_wrist_roll_joint']:
-			PR2RobotScript.pr2_joint_wait_methods[jName] = partial(PR2RobotScript.robotArm.wait_for, PR2RobotScript.RIGHT);
-			
+                      'r_upper_arm_roll_joint', 'r_elbow_flex_joint',
+                      'r_forearm_roll_joint', 'r_wrist_flex_joint',
+                      'r_wrist_roll_joint']:
+            PR2RobotScript.pr2_joint_wait_methods[jName] = partial(PR2RobotScript.robotArm.wait_for, PR2RobotScript.RIGHT);
+            
         PR2RobotScript.pr2_joint_wait_methods['l_gripper_joint'] = partial(PR2RobotScript.robotArm.wait_for, PR2RobotScript.LEFT);
         PR2RobotScript.pr2_joint_wait_methods['r_gripper_joint'] = partial(PR2RobotScript.robotArm.wait_for, PR2RobotScript.RIGHT);
 
@@ -150,10 +154,10 @@ class PR2RobotScript(RobotScript):
         # we fill the whole dict with Units.ANGULAR, replacing the
         # few metric joints' entries:
         for jName in PR2RobotScript.pr2_joints:
-        	PR2RobotScript.pr2_joint_units[jName] = Units.ANGULAR;
+            PR2RobotScript.pr2_joint_units[jName] = Units.ANGULAR;
         for jName in ['l_gripper_joint', 'r_gripper_joint', 'torso_lift_joint']:
-        	PR2RobotScript.pr2_joint_units[jName] = Units.DISTANCE;
-        	
+            PR2RobotScript.pr2_joint_units[jName] = Units.DISTANCE;
+            
 
     @staticmethod
     def getSensorReading(sensorName):
@@ -168,29 +172,48 @@ class PR2RobotScript(RobotScript):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         reading = PR2RobotScript.sensor_observer.getSensorReading(sensorName); 
-       	if PR2RobotScript.pr2_joint_units[sensorName] == Units.ANGULAR:
-       	    return RobotScript.rad2degree(reading)
-       	else:
-       		return reading
-
-	@staticmethod
-	def waitFor(jointName):
-		try:
-			PR2RobotScript.pr2_joint_wait_methods[jointName]();
-		except KeyError:
-			raise ValueError("No joint named '%s' has a 'wait' facility." % jointName);
+        if PR2RobotScript.pr2_joint_units[sensorName] == Units.ANGULAR:
+           return RobotScript.rad2degree(reading)
+        else:
+           return reading
 
     @staticmethod
-    def tiltHead(newVal, duration=1.0):
+    def waitFor(jointName):
+        try:
+            PR2RobotScript.pr2_joint_wait_methods[jointName]();
+        except KeyError:
+            raise ValueError("No joint named '%s' has a 'wait' facility." % jointName);
+
+    @staticmethod
+    def tiltHead(newTilt, duration=1.0):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
+        # If currently moving head, must wait for that done,
+        # else the reading for the pan that we are about
+        # to do will be transient:
+        PR2RobotScript.waitFor('head_pan_joint')
         currRot = PR2RobotScript.getSensorReading('head_pan_joint');
-        PR2RobotScript.head.look(currRot, newVal, dur=duration)
+        PR2RobotScript.head.look(currRot, newTilt, dur=duration)
+        
+    @staticmethod
+    def panHead(newPan, duration=1.0):
+        if not PR2RobotScript.initialized:
+            PR2RobotScript.initialize()
+        # If currently moving head, must wait for that done,
+        # else the reading for the tilt that we are about
+        # to do will be transient:
+        PR2RobotScript.waitFor('head_tilt_joint')
+        currTilt = PR2RobotScript.getSensorReading('head_tilt_joint');
+        PR2RobotScript.head.look(newPan, currTilt, dur=duration)
         
     @staticmethod
     def rotateHead(newVal, duration=1.0):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
+        # If currently moving head, must wait for that done,
+        # else the reading for the tilt that we are about
+        # to do will be transient:
+        PR2RobotScript.waitFor('head_tilt_joint')
         currTilt = PR2RobotScript.getSensorReading('head_tilt_joint');
         PR2RobotScript.head.look(newVal, currTilt, dur=duration)
         
@@ -206,12 +229,6 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.initialize()
         PR2RobotScript.gripper.close(side)
 
-    @staticmethod
-    def panHead(newVal):
-        if not PR2RobotScript.initialized:
-            PR2RobotScript.initialize()
-        pass
-        
     # ----------------  Class Pr2SensorObserver   -----------------------        
         
     class PR2SensorObserver(object):
@@ -257,27 +274,16 @@ class PR2RobotScript(RobotScript):
             
             #rospy.loginfo("Joint state: " + str(self._latest_joint_state))
 
-
-class Infix(object):
-	
-    tolerance = 0.01;
-	
-    def __init__(self, func):
-        self.func = func
-    def __or__(self, other):
-        return self.func(other)
-    def __ror__(self, other):
-        return Infix(partial(self.func, other))
-    def __call__(self, v1, v2):
-        return self.func(v1, v2)
-
-@Infix
-def equallish(x,y):
-	if (abs(x-y) <= Infix.tolerance):
-		return True;
-	else:
-		return False;
-	
+def aboutEq(sensorName, val):
+    sensorVal = PR2RobotScript.getSensorReading(sensorName);
+    if PR2RobotScript.pr2_joint_units[sensorName] == Units.ANGULAR:
+        tolerance = Tolerances.ANGULAR; # degrees
+    else:
+        tolerance = Tolerances.DISTANCE # meters
+    if (abs(sensorVal - val) <= tolerance):
+        return True;
+    else:
+        return False;
 
 if __name__ == "__main__":
     

@@ -3,37 +3,41 @@
 '''
 pr2.openGripper(RIGHT)
 pr2.closeGripper(LEFT)
-pr2.tiltHead(-30);
-pr2.rotateHead(30);
+pr2.tiltHead(-30)
+pr2.rotateHead(30)
+
+pr2.waitFor(jointName)
+
+pr2.getSensorReading(sensorName)
+
+aboutEq(jointName, value)
+
 '''
 
-
-#from robot_scripting import RobotScript
-#from robot_scripting import RobotScript as rs
-
-
 from robot_scripting import PR2RobotScript as pr2
-from robot_scripting import equallish
+from robot_scripting import aboutEq
 
 LEFT  = pr2.LEFT
 RIGHT = pr2.RIGHT
 BOTH  = pr2.BOTH
 
-if pr2.getSensorReading("l_gripper_joint") |equallish| 0:
+if aboutEq("l_gripper_joint", 0):
     pr2.openGripper(LEFT)
 else:
     pr2.closeGripper(LEFT)   
 
-if pr2.getSensorReading("r_gripper_joint") |equallish| 0:
+if aboutEq("r_gripper_joint", 0):
     pr2.openGripper(RIGHT)
 else:
     pr2.closeGripper(RIGHT)   
 
-print pr2.getSensorReading('head_tilt_joint')
-
-if pr2.getSensorReading('head_tilt_joint') |equallish| 30:
-    pr2.tiltHead(-30);
+if aboutEq('head_tilt_joint', 30):
+    pr2.tiltHead(-30, duration=0.5)
 else:
-    pr2.tiltHead(30);
+    pr2.tiltHead(30, duration=0.5)
     
-#pr2.rotateHead(30);
+if aboutEq('head_pan_joint', 60):
+    pr2.panHead(-60)
+else:
+    pr2.panHead(60)
+
