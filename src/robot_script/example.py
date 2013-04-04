@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 '''
-pr2.openGripper(RIGHT)
-pr2.closeGripper(LEFT)
-pr2.tiltHead(-30)
-pr2.rotateHead(30)
+pr2.openGripper(side)    # side is LEFT or RIGHT
+pr2.closeGripper(side)   # side is LEFT or RIGHT
+pr2.tiltHead(-30)        # can add something like 'duration=2.0' for motion duration 
+pr2.rotateHead(30)       # can add something like 'duration=2.0' for motion duration 
+pr2.moveArmJoint(jointName, newAngle, duration=2.0)
 
 pr2.waitFor(jointName)
 
@@ -41,3 +42,7 @@ if aboutEq('head_pan_joint', 60):
 else:
     pr2.panHead(60)
 
+if aboutEq('l_shoulder_pan_joint', 90):
+    pr2.moveArmJoint('l_shoulder_pan_joint', 0, duration=2.0)
+else:
+    pr2.moveArmJoint('l_shoulder_pan_joint', 90, duration=2.0)

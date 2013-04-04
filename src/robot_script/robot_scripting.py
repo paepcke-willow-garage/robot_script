@@ -93,6 +93,9 @@ class PR2RobotScript(RobotScript):
                   'l_gripper_l_finger_joint', 'l_gripper_r_finger_joint', 'l_gripper_r_finger_tip_joint', 'l_gripper_l_finger_tip_joint', 'l_gripper_motor_screw_joint', 
                   'l_gripper_motor_slider_joint']    
 
+    lArmJoints = ["l_shoulder_pan_joint", "l_shoulder_lift_joint", "l_upper_arm_roll_joint", "l_elbow_flex_joint", "l_forearm_roll_joint", "l_wrist_flex_joint", "l_wrist_roll_joint"]
+    rArmJoints = ["r_shoulder_pan_joint", "r_shoulder_lift_joint", "r_upper_arm_roll_joint", "r_elbow_flex_joint", "r_forearm_roll_joint", "r_wrist_flex_joint", "r_wrist_roll_joint"]
+
     pr2_joint_units = {}
 
     pr2_joint_wait_methods = {}
@@ -229,6 +232,38 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.initialize()
         PR2RobotScript.gripper.close(side)
 
+    @staticmethod
+    def moveArmJoint(jointName, newAngle, duration=2.0):
+        if not PR2RobotScript.initialized:
+            PR2RobotScript.initialize()
+            
+        # Is this a left or right joint?
+        try:
+            PR2RobotScript.lArmJoints.index(jointName); 
+            side = PR2RobotScript.LEFT
+        except ValueError:
+            try:
+                PR2RobotScript.rArmJoints.index(jointName);
+                side = PR2RobotScript.RIGHT
+            except ValueError:
+                raise ValueError("PR2 arms have no joint named '%s'" % jointName)
+                
+        # Init an arm joint array with the new value the one
+        # given joint is to take. Then fill in the other joints
+        # with their current values:
+        newPos = [newAngle]*len(PR2RobotScript.lArmJoints)
+        if side == PR2RobotScript.LEFT:
+            for pos, jName in enumerate(PR2RobotScript.lArmJoints):
+                if jName == jointName:
+                    continue
+                newPos[pos] = PR2RobotScript.getSensorReading(jName);
+        else:
+            for pos, jName in enumerate(PR2RobotScript.rArmJoints):
+                if jName == jointName:
+                    continue
+                newPos[pos] = PR2RobotScript.getSensorReading(jName);
+        PR2RobotScript.robotArm.move_to(newPos, side, dur=duration)
+            
     # ----------------  Class Pr2SensorObserver   -----------------------        
         
     class PR2SensorObserver(object):
