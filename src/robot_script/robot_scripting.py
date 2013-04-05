@@ -7,7 +7,7 @@ pr2_simple_interface underneath. Adds:
    - Sensor reading, including state of each arm joint
    - Arrangement to anticipate scripting for other types of robots
    
-@author: Andreas Paepcke, based on Austin Hendrix' pr2_simple_interface, and Maya Carmak's fake_robot.py
+@author: Andreas Paepcke, based on Austin Hendrix' pr2_simple_interface, and Maya Cakmak's fake_robot.py
 '''
 
 import roslib
