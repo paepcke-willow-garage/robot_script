@@ -43,9 +43,20 @@ class Units:
 
 class Tolerances:
     ANGULAR  = 6;     # +/- degrees
-    DISTANCE = 0.01   # +/- meters
+    DISTANCE = 0.02   # +/- meters
 
-    # ----------------  Abstract Class RobotScript   -----------------------
+class FullPose(object):
+    '''
+    Container for a Pose instance and a Quarternion.
+    They together define where the base is to go,
+    and how to turn:
+    '''
+    def __init__(self, place=(0.0,0.0,0.0), rotation=0.0):
+        self.linear  = Point(place[0],place[1],place[2])
+        self.angular = Quaternion(0.0,0.0,RobotScript.degree2rad(rotation),0.0)
+        self.pose    = Pose(self.linear, self.angular)
+
+    # ----------------  ABSTRACT CLASS ROBOTSCRIPT   -----------------------
 
 class RobotScript(object):
     '''
@@ -137,6 +148,7 @@ class PR2RobotScript(RobotScript):
         # Build dict of methods that wait for particular joints to finish:
         for jName in ['head_tilt_joint', 'head_pan_joint']:
             PR2RobotScript.pr2_joint_wait_methods[jName] = PR2RobotScript.head.wait_for;
+        PR2RobotScript.pr2_joint_wait_methods['torso_lift_joint'] = PR2RobotScript.torso.wait_for;
 
         for jName in ['l_shoulder_pan_joint', 'l_shoulder_lift_joint',
                       'l_upper_arm_roll_joint', 'l_elbow_flex_joint',
@@ -161,6 +173,8 @@ class PR2RobotScript(RobotScript):
         for jName in ['l_gripper_joint', 'r_gripper_joint', 'torso_lift_joint']:
             PR2RobotScript.pr2_joint_units[jName] = Units.DISTANCE;
             
+        # Publisher for base movements        
+        PR2RobotScript.baseMovementPublisher = rospy.Publisher('base_controller/command', Twist)
 
     @staticmethod
     def getSensorReading(sensorName):
@@ -233,6 +247,12 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.gripper.close(side)
 
     @staticmethod
+    def setTorso(height, duration=10.0):
+        if not PR2RobotScript.initialized:
+            PR2RobotScript.initialize()
+        PR2RobotScript.torso.set(height, dur=duration)
+
+    @staticmethod
     def moveArmJoint(jointName, newAngle, duration=2.0):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
@@ -263,7 +283,26 @@ class PR2RobotScript(RobotScript):
                     continue
                 newPos[pos] = PR2RobotScript.getSensorReading(jName);
         PR2RobotScript.robotArm.move_to(newPos, side, dur=duration)
-            
+          
+    @staticmethod
+    def moveBase(fullPose, duration=3.0):
+        '''
+        Move the robot base to a different position, turning its torso at the same time.
+        @param fullPose: a FullPose instance containing relative target location and angle for the base.
+        @type fullPose: FullPose
+        @param duration: duration of motion
+        @type duration: float
+        '''
+        movement = Twist()
+        movement.linear = fullPose.linear
+        movement.angular = fullPose.angular
+        start_time = rospy.get_rostime()
+        while rospy.get_rostime() < start_time + rospy.Duration(duration):
+            PR2RobotScript.baseMovementPublisher.publish(movement)
+        time.sleep(0.01)
+        PR2RobotScript.baseMovementPublisher.publish(Twist())  # Stop
+
+
     # ----------------  Class Pr2SensorObserver   -----------------------        
         
     class PR2SensorObserver(object):
