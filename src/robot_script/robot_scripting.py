@@ -255,36 +255,40 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.torso.set(height, dur=duration)
 
     @staticmethod
-    def moveArmJoint(jointName, newAngle, duration=2.0):
+    def moveArmJoint(jointNames, newAngles, duration=2.0, wait=True):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
             
         # Is this a left or right joint?
         try:
-            PR2RobotScript.lArmJoints.index(jointName); 
+            PR2RobotScript.lArmJoints.index(jointNames[0]); 
             side = PR2RobotScript.LEFT
         except ValueError:
             try:
-                PR2RobotScript.rArmJoints.index(jointName);
+                PR2RobotScript.rArmJoints.index(jointNames[0]);
                 side = PR2RobotScript.RIGHT
             except ValueError:
-                raise ValueError("PR2 arms have no joint named '%s'" % jointName)
+                raise ValueError("PR2 arms have no joint named '%s'" % jointNames[0])
                 
         # Init an arm joint array with the new value the one
         # given joint is to take. Then fill in the other joints
         # with their current values:
-        newPos = [newAngle]*len(PR2RobotScript.lArmJoints)
+        newPos = [0]*len(PR2RobotScript.lArmJoints)
         if side == PR2RobotScript.LEFT:
             for pos, jName in enumerate(PR2RobotScript.lArmJoints):
-                if jName == jointName:
-                    continue
-                newPos[pos] = PR2RobotScript.getSensorReading(jName);
+                if jName in jointNames:
+                    newPos[pos] = newAngles[jointNames.index(jName)]
+                else:
+                    newPos[pos] = PR2RobotScript.getSensorReading(jName);
         else:
             for pos, jName in enumerate(PR2RobotScript.rArmJoints):
-                if jName == jointName:
-                    continue
-                newPos[pos] = PR2RobotScript.getSensorReading(jName);
+                if jName in jointNames:
+                    newPos[pos] = newAngles[jointNames.index(jName)]
+                else:
+                    newPos[pos] = PR2RobotScript.getSensorReading(jName);
         PR2RobotScript.robotArm.move_to(newPos, side, dur=duration)
+        if wait:
+            PR2RobotScript.robotArm.wait_for(side)
           
     @staticmethod
     def moveBase(fullPose, duration=3.0):
