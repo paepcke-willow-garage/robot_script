@@ -6,10 +6,11 @@ pr2.openGripper(side)    # side is LEFT or RIGHT
 pr2.closeGripper(side)   # side is LEFT or RIGHT
 pr2.tiltHead(-30)        # can add something like 'duration=2.0' for motion duration 
 pr2.rotateHead(30)       # can add something like 'duration=2.0' for motion duration 
-pr2.moveArmJoint(joints, Values, duration=2.0)
-pr2.moveBase(fullPose)   # can add something like 'duration=2.0' for motion duration 
 
-fullPose = FullPose(place=(0.3,0.0,0.0), angle=90)
+pr2.moveArmJoint(joints, Values, duration=2.0)
+pr2.moveArmJoint(jointName, newAngle, duration=2.0, wait=False)
+pr2.moveArmJoint([jointName1, jointName2, ...], [newAngle1, newAngle2, ...], duration=2.0, wait=True)
+pr2.moveBase(place=(x,y,z), rotation=deg, duration=2) #
 
 pr2.waitFor(jointName, duration)
 
@@ -43,8 +44,7 @@ def __init__():
 
     pr2.closeGripper(LEFT)
     pr2.closeGripper(RIGHT)
-    fullPose = FullPose(place=(0.3,0.0,0.0), rotation=-10)
-    pr2.moveBase(fullPose)    
+    pr2.moveBase(place=(0.3,0.0,0.0), rotation=-10)    
     pr2.tiltHead(20,2)
     pr2.rotateHead(-45, 2)
     joints = ['l_shoulder_pan_joint','l_elbow_flex_joint', 'l_shoulder_lift_joint', 'l_forearm_roll_joint','l_wrist_flex_joint','l_upper_arm_roll_joint', 'l_wrist_roll_joint']

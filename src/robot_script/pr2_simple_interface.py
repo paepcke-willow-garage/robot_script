@@ -7,7 +7,7 @@
 #   o removed rospy.init_node(): done in robot_scripting.
 
 import roslib
-roslib.load_manifest('pr2_simple_interface')
+#roslib.load_manifest('pr2_simple_interface')
 import rospy
 import actionlib
 import math
@@ -18,8 +18,8 @@ from pr2_gripper_sensor_msgs.msg import *
 from pr2_controllers_msgs.msg import *
 from trajectory_msgs.msg import *
 from sensor_msgs.msg import *
-from sound_play.msg import SoundRequest
-from sound_play.libsoundplay import SoundClient
+#from sound_play.msg import SoundRequest
+#from sound_play.libsoundplay import SoundClient
 from face_detector.msg import *
 import std_srvs.srv
 
@@ -349,21 +349,21 @@ class Torso:
        rospy.loginfo("Waiting for torso")
        traj_client_torso.wait_for_result();
 
-class Sound(SoundClient):
-   def __init__(self):
-      rospy.logdebug("Initializing Sound Client")
-      SoundClient.__init__(self)
-      # wait for subscribers
-      timeout = 10
-      while timeout > 0:
-         if self.pub.get_num_connections() > 0:
-            timeout = 0
-         else:
-            rospy.sleep(1)
-
-   def say(self, text):
-      rospy.loginfo("Saying: \"%s\"" % str(text))
-      SoundClient.say(self, text)
+#class Sound(SoundClient):
+#   def __init__(self):
+#      rospy.logdebug("Initializing Sound Client")
+#      SoundClient.__init__(self)
+#      # wait for subscribers
+#      timeout = 10
+#      while timeout > 0:
+#         if self.pub.get_num_connections() > 0:
+#            timeout = 0
+#         else:
+#            rospy.sleep(1)
+#
+#   def say(self, text):
+#      rospy.loginfo("Saying: \"%s\"" % str(text))
+#      SoundClient.say(self, text)
 
 def hug():
    rospy.wait_for_service('/pr2_props/hug')

@@ -23,6 +23,7 @@ roslib.load_manifest('pr2_controllers_msgs')
 import sys,os,time
 import numpy, math
 from functools import partial
+import types
 
 # ROS libraries
 import rospy
@@ -204,7 +205,7 @@ class PR2RobotScript(RobotScript):
             raise ValueError("No joint named '%s' has a 'wait' facility." % jointName);
 
     @staticmethod
-    def tiltHead(newTilt, duration=1.0):
+    def tiltHead(newTilt, duration=1.0, wait=True):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         # If currently moving head, must wait for that done,
@@ -213,9 +214,11 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.waitFor('head_pan_joint')
         currRot = PR2RobotScript.getSensorReading('head_pan_joint');
         PR2RobotScript.head.look(currRot, newTilt, dur=duration)
+        if wait:
+            PR2RobotScript.waitFor('head_tilt_joint');
         
     @staticmethod
-    def panHead(newPan, duration=1.0):
+    def panHead(newPan, duration=1.0, wait=True):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         # If currently moving head, must wait for that done,
@@ -224,9 +227,11 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.waitFor('head_tilt_joint')
         currTilt = PR2RobotScript.getSensorReading('head_tilt_joint');
         PR2RobotScript.head.look(newPan, currTilt, dur=duration)
+        if wait:
+            PR2RobotScript.waitFor('head_pan_joint');
         
     @staticmethod
-    def rotateHead(newVal, duration=1.0):
+    def rotateHead(newVal, duration=1.0, wait=True):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         # If currently moving head, must wait for that done,
@@ -235,29 +240,59 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.waitFor('head_tilt_joint')
         currTilt = PR2RobotScript.getSensorReading('head_tilt_joint');
         PR2RobotScript.head.look(newVal, currTilt, dur=duration)
+        if wait:
+            PR2RobotScript.waitFor('head_tilt_joint');
+            PR2RobotScript.waitFor('head_pan_joint');
         
     @staticmethod        
     def openGripper(side):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         PR2RobotScript.gripper.release(side)
+        if side == PR2RobotScript.LEFT:
+            PR2RobotScript.waitFor('l_gripper_joint');
+        else:
+            PR2RobotScript.waitFor('r_gripper_joint');
 
     @staticmethod
     def closeGripper(side):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         PR2RobotScript.gripper.close(side)
+        if side == PR2RobotScript.LEFT:
+            PR2RobotScript.waitFor('l_gripper_joint');
+        else:
+            PR2RobotScript.waitFor('r_gripper_joint');
 
     @staticmethod
-    def setTorso(height, duration=10.0):
+    def setTorso(height, duration=10.0, wait=True):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         PR2RobotScript.torso.set(height, dur=duration)
+        if wait:
+            PR2RobotScript.waitFor('torso_lift_joint');
 
     @staticmethod
     def moveArmJoint(jointNames, newAngles, duration=2.0, wait=True):
+        '''
+        Move one or more arm joints to a new angle. 
+        @param jointNames: Either a single joint name, or an array of joint names.
+        @type jointNames: {jointName | [jointName]}
+        @param newAngles: Either a single angle, or an array of angles. There must be as many joint angles as joint names.
+        @type newAngles: {angleValue | [angleValue]}
+        @param duration: How long to take execution the motion
+        @type duration: float
+        @param wait: whether to wait till motion is done before returning from method 
+        @type wait: boolean
+        '''
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
+            
+        if not isinstance(jointNames, types.ListType):
+            jointNames = [jointNames]
+        
+        if not isinstance(newAngles, types.ListType):
+            newAngles = [newAngles]
             
         # Is this a left or right joint?
         try:
@@ -291,14 +326,20 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.robotArm.wait_for(side)
           
     @staticmethod
-    def moveBase(fullPose, duration=3.0):
+    def moveBase(place=(0.0,0.0,0.0), rotation=0.0, duration=3.0):
         '''
         Move the robot base to a different position, turning its torso at the same time.
-        @param fullPose: a FullPose instance containing relative target location and angle for the base.
-        @type fullPose: FullPose
+        @param place: a tuple with x,y,z coordinates of the destination
+        @type place: (float,float,float) 
+        @param rotation: simultaneous rotation of the base
+        @type rotation: float
         @param duration: duration of motion
         @type duration: float
         '''
+        if not PR2RobotScript.initialized:
+            PR2RobotScript.initialize()
+        
+        fullPose = FullPose(place, rotation)
         movement = Twist()
         movement.linear = fullPose.linear
         movement.angular = fullPose.angular
