@@ -20,7 +20,7 @@ from trajectory_msgs.msg import *
 from sensor_msgs.msg import *
 #from sound_play.msg import SoundRequest
 #from sound_play.libsoundplay import SoundClient
-from face_detector.msg import *
+#from face_detector.msg import *
 import std_srvs.srv
 
 
