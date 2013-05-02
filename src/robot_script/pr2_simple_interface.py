@@ -342,7 +342,7 @@ class Torso:
            h = 0.3
         if h < 0:
            h = 0
-        rospy.loginfo("Setting torso height to" + str(h))
+        rospy.loginfo("Setting torso height to " + str(h))
         pose_torso([h], dur)
 
     def wait_for(self):

@@ -36,6 +36,64 @@ More examples:
 	values = [-70, -90, -70]
 	pr2.moveArmJoint(joints, values, duration=2.0, wait=False)
 
+ADVANCED USE: Simulated events impacting your script:
+
+    A simulator, or sensor can provide callbacks to your 
+    application at regular intervals, or on a schedule you
+    determine:
+
+    from event_simulator import EventSimulator
+
+    # Callback invoked at specified times. Keep this
+    # callback short. It runs in a different thread,
+    # which should be free to generate further events.
+    # For more sophisticated use, see next section
+    # 'Even more advanced use.' 
+    
+    def printWord(word):
+        print(word)
+        
+    schedule = OrderedDict()
+    schedule[2.0] = 'This'
+    schedule[5.0] = 'is'
+    schedule[6.0] = 'a'
+    schedule[7.2] = 'test'
+
+    EventSimulator().start(schedule, printWord)
+    
+EVEN MORE ADVANCED USE:      
+
+    You can queue up results that are computed or sensed by
+    the callbacks:
+    The simulator callbacks may return values to the simulator.
+    Each simulator is equipped with a queue into which it will
+    place those returned values. Your application thread can
+    pick them up from that queue.
+    
+    The following code creates a callback that upper-cases
+    every word it receives. These results are queued for the
+    application to pick from a queue:
+    
+    # Callback function that returns a value:
+    
+    def timeToDoSomething(word):
+        return word.upper()
+
+    mySimulator = EventSimulator() 
+    eventSimulator.start(schedule, timeToDoSomething);
+    eventQueue = eventSimulator.getEventQueue()
+    while (True):
+        try:
+            event = eventQueue.get(block=True, timeout=4.0);
+        except Empty:
+            print("Queue empty for more than 4 seconds. Quitting.")
+            sys.exit();
+        print event;
+    
+
+The many 'if' statements below just ensure that the robot will do something
+different each time you run this file.
+
 '''
 
 from robot_scripting import PR2RobotScript as pr2
@@ -86,3 +144,45 @@ else:
     pr2.setTorso(0, duration=5, wait=True)
     print "Torso done"
 
+
+# Advanced: event simulators that generate events via callbacks:
+
+from event_simulators.event_simulator import EventSimulator
+from Queue import Empty
+from collections import OrderedDict
+import sys
+
+def printWord(word):
+    print(word)
+    
+# Display 'This is a test,' with words printed at 2,5,6, and 7.2 seconds:
+schedule = OrderedDict()
+schedule[2.0] = 'This'
+schedule[5.0] = 'is'
+schedule[6.0] = 'a'
+schedule[7.2] = 'test'
+
+EventSimulator().start(schedule, printWord)
+
+
+# Even more advanced: callback 
+
+# Note: this word upper-casing example will run simultaneously
+#       with the example above. While the example above will
+#       print the words within the callback function, the following
+#       example has the callback function do the work, but this application
+#       picks the result up from a thread-safe queue
+
+def timeToDoSomething(word):
+    return word.upper()
+    
+mySimulator = EventSimulator() 
+mySimulator.start(schedule, timeToDoSomething);
+eventQueue = mySimulator.getEventQueue()
+while (True):
+    try:
+        event = eventQueue.get(block=True, timeout=4.0);
+    except Empty:
+        print("Queue empty for more than 4 seconds. Quitting.")
+        sys.exit();
+    print("From the event queue: " + event);
