@@ -1,0 +1,11 @@
+<launch>
+  <arg name="gui" default="false"/>
+  <arg name="throttled" default="false"/>
+
+  <include file="$(find pr2_gazebo)/launch/pr2_empty_world.launch">
+    <arg name="gui" value="$(arg gui)"/>
+    <arg name="throttled" value="$(arg throttled)"/>
+  </include>
+
+  <node name="rviz" pkg="rviz" type="rviz" respawn="false" />
+</launch>

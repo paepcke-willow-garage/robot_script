@@ -59,7 +59,7 @@ def pose_l(position, dur):
 def pose_head(position, dur):
    joints = [ 'head_pan_joint', 'head_tilt_joint' ]
    pose_(position, joints, traj_client_head, dur)
-
+   
 def pose_torso(position, dur):
    joints = [ 'torso_lift_joint' ]
    pose_(position, joints, traj_client_torso, dur)

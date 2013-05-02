@@ -9,6 +9,10 @@ Gripper and Head:
     pr2.closeGripper(side, wait=True)   # side is LEFT or RIGHT
     pr2.tiltHead(-30, wait=True)        # can add something like 'duration=2.0' for motion duration 
     pr2.rotateHead(30, wait=True)       # can add something like 'duration=2.0' for motion duration 
+    pr2.lookAt(-100, 30, wait=False)    # takes both pan and tilt angle for smooth motion 
+    
+else:
+    pr2.lookAt(+100, +30 , 5, wait=False)
  
 Moving the arm joints one at a time, or together:
     pr2.moveArmJoint(jointName, newAngle, duration=2.0, wait=False)
@@ -122,6 +126,11 @@ if aboutEq('head_pan_joint', 60):
     pr2.panHead(-60)
 else:
     pr2.panHead(60)
+
+if aboutEq('head_tilt_joint', 30):
+    pr2.lookAt(-100, -20 , 5, wait=False)
+else:
+    pr2.lookAt(+100, +30 , 5, wait=False)
 
 if aboutEq('l_shoulder_pan_joint', 90):
     pr2.moveArmJoint('l_shoulder_pan_joint', 0, duration=2.0)

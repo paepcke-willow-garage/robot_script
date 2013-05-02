@@ -238,6 +238,16 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.head.look(newPan, currTilt, dur=duration)
         if wait:
             PR2RobotScript.waitFor('head_pan_joint', newPan);
+     
+    @staticmethod
+    def lookAt(pan, tilt, duration=1.0, wait=True):
+        if not PR2RobotScript.initialized:
+            PR2RobotScript.initialize()
+        PR2RobotScript.head.look(pan, tilt, dur=duration)
+        if wait:
+            PR2RobotScript.waitFor('head_pan_joint', pan);
+            PR2RobotScript.waitFor('head_tilt_joint', tilt);
+     
         
     @staticmethod
     def rotateHead(newVal, duration=1.0, wait=True):
