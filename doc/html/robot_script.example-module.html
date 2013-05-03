@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>robot_script.example</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="robot_script-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="robot_script-module.html">Package&nbsp;robot_script</a> ::
+        Module&nbsp;example
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="robot_script.example-module.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== MODULE DESCRIPTION ==================== -->
+<h1 class="epydoc">Module example</h1><p class="nomargin-top"><span class="codelink"><a href="robot_script.example-pysrc.html">source&nbsp;code</a></span></p>
+<p><b>List of available commands:</b></p>
+  <p>Gripper and Head:</p>
+  <ul>
+    <li>
+      pr2.openGripper(side, wait=True)    # side is LEFT or RIGHT
+    </li>
+    <li>
+      pr2.closeGripper(side, wait=True)   # side is LEFT or RIGHT
+    </li>
+    <li>
+      pr2.tiltHead(-30, wait=True)        # can add something like 
+      'duration=2.0' for motion duration
+    </li>
+    <li>
+      pr2.rotateHead(30, wait=True)       # can add something like 
+      'duration=2.0' for motion duration
+    </li>
+    <li>
+      pr2.lookAt(-100, 30, wait=False)    # takes both pan and tilt angle 
+      for smooth motion
+    </li>
+  </ul>
+  <p>Moving the arm joints one at a time, or together:</p>
+  <ul>
+    <li>
+      pr2.moveArmJoint(jointName, newAngle, duration=2.0, wait=False)
+    </li>
+    <li>
+      pr2.moveArmJoint([jointName1, jointName2, ...], [newAngle1, 
+      newAngle2, ...], duration=2.0, wait=True)
+    </li>
+  </ul>
+  <p>Moving the whole robot (the base):</p>
+  <ul>
+    <li>
+      pr2.moveBase(place=(x,y,z), rotation=deg, duration=2, wait=True)
+    </li>
+  </ul>
+  <p>Reading joint values:</p>
+  <ul>
+    <li>
+      pr2.getSensorReading(sensorName)
+    </li>
+  </ul>
+  <p>Checking approximate joint value (when setting a joint to 0, it's 
+  often something like 0.0000134; aboutEq() does an approximate 
+  compare)</p>
+  <ul>
+    <li>
+      aboutEq(jointName, value)
+    </li>
+  </ul>
+  <p>Raising/lowering the torso:</p>
+  <ul>
+    <li>
+      pr2.setTorso(.05, 2.0, wait=True)
+    </li>
+  </ul>
+  <p>Temporarily pausing execution (but already initiated robot motions 
+  continue):</p>
+  <ul>
+    <li>
+      rospy.timer.sleep(seconds)
+    </li>
+  </ul>
+  <p>More examples:</p>
+  <ul>
+    <li>
+      pr2.tiltHead(15 + pr2.getSensorReading(&quot;head_tilt_joint&quot;), 
+      1)
+    </li>
+    <li>
+      joints = ['l_shoulder_lift_joint', 'l_forearm_roll_joint', 
+      'l_wrist_flex_joint'] values = [-70, -90, -70] 
+      pr2.moveArmJoint(joints, values, duration=2.0, wait=False)
+    </li>
+  </ul>
+  <p>ADVANCED USE: Simulated events impacting your script:</p>
+  <ul>
+    <li>
+      A simulator, or sensor can provide callbacks to your application at 
+      regular intervals, or on a schedule you determine:
+<pre class="literalblock">
+   from event_simulator import EventSimulator
+
+   # Callback invoked at specified times. Keep this
+   # callback short. It runs in a different thread,
+   # which should be free to generate further events.
+   # For more sophisticated use, see next section
+   # 'Even more advanced use.' 
+   
+   def printWord(word):
+       print(word)
+       
+   schedule = OrderedDict()
+   schedule[2.0] = 'This'
+   schedule[5.0] = 'is'
+   schedule[6.0] = 'a'
+   schedule[7.2] = 'test'
+
+   EventSimulator().start(schedule, printWord)
+</pre>
+    </li>
+  </ul>
+  <p>EVEN MORE ADVANCED USE:</p>
+  <ul>
+    <li>
+      You can queue up results that are computed or sensed by the 
+      callbacks: The simulator callbacks may return values to the 
+      simulator. Each simulator is equipped with a queue into which it will
+      place those returned values. Your application thread can pick them up
+      from that queue.
+      <p>The following code creates a callback that upper-cases every word 
+      it receives. These results are queued for the application to pick 
+      from a queue:</p>
+<pre class="literalblock">
+   # Callback function that returns a value:
+   
+   def timeToDoSomething(word):
+       return word.upper()
+
+   mySimulator = EventSimulator() 
+   eventSimulator.start(schedule, timeToDoSomething);
+   eventQueue = eventSimulator.getEventQueue()
+   while (True):
+       try:
+           event = eventQueue.get(block=True, timeout=4.0);
+       except Empty:
+           print(&quot;Queue empty for more than 4 seconds. Quitting.&quot;)
+           sys.exit();
+       print event;
+</pre>
+    </li>
+  </ul>
+  <p>The many 'if' statements below just ensure that the robot will do 
+  something different each time you run this file.</p>
+
+<!-- ==================== FUNCTIONS ==================== -->
+<a name="section-Functions"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Functions</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Functions"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="printWord"></a><span class="summary-sig-name">printWord</span>(<span class="summary-sig-arg">word</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="robot_script.example-pysrc.html#printWord">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a name="timeToDoSomething"></a><span class="summary-sig-name">timeToDoSomething</span>(<span class="summary-sig-arg">word</span>)</span></td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="robot_script.example-pysrc.html#timeToDoSomething">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+<!-- ==================== VARIABLES ==================== -->
+<a name="section-Variables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Variables</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Variables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="LEFT"></a><span class="summary-name">LEFT</span> = <code title="pr2.LEFT">pr2.LEFT</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="RIGHT"></a><span class="summary-name">RIGHT</span> = <code title="pr2.RIGHT">pr2.RIGHT</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="BOTH"></a><span class="summary-name">BOTH</span> = <code title="pr2.BOTH">pr2.BOTH</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="torsoState"></a><span class="summary-name">torsoState</span> = <code title="pr2.getSensorReading('torso_lift_joint')">pr2.getSensorReading('torso_lift_joint')</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="schedule"></a><span class="summary-name">schedule</span> = <code title="OrderedDict()">OrderedDict()</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="mySimulator"></a><span class="summary-name">mySimulator</span> = <code title="EventSimulator()">EventSimulator()</code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="eventQueue"></a><span class="summary-name">eventQueue</span> = <code title="mySimulator.getEventQueue()">mySimulator.getEventQueue()</code>
+    </td>
+  </tr>
+</table>
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="robot_script-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Thu May  2 16:55:57 2013
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

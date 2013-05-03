@@ -1,0 +1,19 @@
+<<PackageHeader(robot_script)>>
+
+<<TableOfContents(4)>>
+
+== API Stability ==
+
+This package is in an '''experimental''' stage.
+
+== System Dependencies ==
+Python and ROS need to be installed on your system. This package has been
+tested under Python 2.7 under ROS fuerte, Ubuntu precise.
+
+== Installing the robot_script Package ==
+
+Check out the robot_script package, and `rosmake` to ready the package for
+operation.
+
+== Nodes ==
+{{{

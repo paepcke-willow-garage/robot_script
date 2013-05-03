@@ -15,26 +15,26 @@ class EventSimulator(threading.Thread):
     Takes a schedule and a callback, and invokes the callback at
     times determined by the schedule. Each callback invokation is
     passed an argument that is specified by the schedule. Example
-    schedule:
+    schedule::
     
-	       schedule = OrderedDict();
-	       schedule[2.0] = 'This';
-	       schedule[5.0] = 'is';
-	       schedule[6.0] = 'a';
-	       schedule[7.2] = 'test';
+        	schedule = OrderedDict();
+        	schedule[2.0] = 'This';
+        	schedule[5.0] = 'is';
+        	schedule[6.0] = 'a';
+        	schedule[7.2] = 'test';
 	       
-	This schedule invokes the callback at 2.0 seconds from program start,
-	and at 5, 6, and 7.2 seconds. The callback argument is the dict value
-	corresponding to the time. See example in __main__.
-	
-	The simulator runs in a separate thread, which is started by calling
-	start(). Make sure that your subclasses invoked this superclass' start()
-	method.
-	
-	The callback function may return a value. This value is pushed into an
-	eventQueue that may be access by other applications. Applications may
-	obtain the eventQueue via getEventQueue(). See Python's built-in Queue
-	class for how applications may feed from that queue.
+    This schedule invokes the callback at 2.0 seconds from program start,
+    and at 5, 6, and 7.2 seconds. The callback argument is the dict value
+    corresponding to the time. See example in __main__.
+    
+    The simulator runs in a separate thread, which is started by calling
+    start(). Make sure that your subclasses invoked this superclass' start()
+    method.
+    
+    The callback function may return a value. This value is pushed into an
+    eventQueue that may be access by other applications. Applications may
+    obtain the eventQueue via getEventQueue(). See Python's built-in Queue
+    class for how applications may feed from that queue.
     '''
     
     def start(self, schedule, callback, repeat=False):

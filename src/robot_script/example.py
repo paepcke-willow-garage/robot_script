@@ -1,73 +1,69 @@
 #!/usr/bin/env python
 
 '''
-List of available commands:
----------------------------
+B{List of available commands:}
 
 Gripper and Head:
-    pr2.openGripper(side, wait=True)    # side is LEFT or RIGHT
-    pr2.closeGripper(side, wait=True)   # side is LEFT or RIGHT
-    pr2.tiltHead(-30, wait=True)        # can add something like 'duration=2.0' for motion duration 
-    pr2.rotateHead(30, wait=True)       # can add something like 'duration=2.0' for motion duration 
-    pr2.lookAt(-100, 30, wait=False)    # takes both pan and tilt angle for smooth motion 
-    
-else:
-    pr2.lookAt(+100, +30 , 5, wait=False)
+    - pr2.openGripper(side, wait=True)    # side is LEFT or RIGHT
+    - pr2.closeGripper(side, wait=True)   # side is LEFT or RIGHT
+    - pr2.tiltHead(-30, wait=True)        # can add something like 'duration=2.0' for motion duration 
+    - pr2.rotateHead(30, wait=True)       # can add something like 'duration=2.0' for motion duration 
+    - pr2.lookAt(-100, 30, wait=False)    # takes both pan and tilt angle for smooth motion 
  
 Moving the arm joints one at a time, or together:
-    pr2.moveArmJoint(jointName, newAngle, duration=2.0, wait=False)
-    pr2.moveArmJoint([jointName1, jointName2, ...], [newAngle1, newAngle2, ...], duration=2.0, wait=True)
+    - pr2.moveArmJoint(jointName, newAngle, duration=2.0, wait=False)
+    - pr2.moveArmJoint([jointName1, jointName2, ...], [newAngle1, newAngle2, ...], duration=2.0, wait=True)
 
 Moving the whole robot (the base):
-    pr2.moveBase(place=(x,y,z), rotation=deg, duration=2, wait=True)
+    - pr2.moveBase(place=(x,y,z), rotation=deg, duration=2, wait=True)
  
 Reading joint values:
-    pr2.getSensorReading(sensorName)
+    - pr2.getSensorReading(sensorName)
 
 Checking approximate joint value (when setting a joint to 0, it's often something like 0.0000134; aboutEq() does an approximate compare)
-    aboutEq(jointName, value)
+    - aboutEq(jointName, value)
 
 Raising/lowering the torso:
-    pr2.setTorso(.05, 2.0, wait=True)
+    - pr2.setTorso(.05, 2.0, wait=True)
 
 Temporarily pausing execution (but already initiated robot motions continue): 
-    rospy.timer.sleep(seconds)
+    - rospy.timer.sleep(seconds)
 
 More examples:
-	pr2.tiltHead(15 + pr2.getSensorReading("head_tilt_joint"), 1)
+	- pr2.tiltHead(15 + pr2.getSensorReading("head_tilt_joint"), 1)
 	
-	joints = ['l_shoulder_lift_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint']
+	- joints = ['l_shoulder_lift_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint']
 	values = [-70, -90, -70]
 	pr2.moveArmJoint(joints, values, duration=2.0, wait=False)
 
 ADVANCED USE: Simulated events impacting your script:
 
-    A simulator, or sensor can provide callbacks to your 
+    - A simulator, or sensor can provide callbacks to your 
     application at regular intervals, or on a schedule you
-    determine:
+    determine::
 
-    from event_simulator import EventSimulator
-
-    # Callback invoked at specified times. Keep this
-    # callback short. It runs in a different thread,
-    # which should be free to generate further events.
-    # For more sophisticated use, see next section
-    # 'Even more advanced use.' 
+        from event_simulator import EventSimulator
     
-    def printWord(word):
-        print(word)
+        # Callback invoked at specified times. Keep this
+        # callback short. It runs in a different thread,
+        # which should be free to generate further events.
+        # For more sophisticated use, see next section
+        # 'Even more advanced use.' 
         
-    schedule = OrderedDict()
-    schedule[2.0] = 'This'
-    schedule[5.0] = 'is'
-    schedule[6.0] = 'a'
-    schedule[7.2] = 'test'
-
-    EventSimulator().start(schedule, printWord)
+        def printWord(word):
+            print(word)
+            
+        schedule = OrderedDict()
+        schedule[2.0] = 'This'
+        schedule[5.0] = 'is'
+        schedule[6.0] = 'a'
+        schedule[7.2] = 'test'
     
+        EventSimulator().start(schedule, printWord)
+
 EVEN MORE ADVANCED USE:      
 
-    You can queue up results that are computed or sensed by
+    - You can queue up results that are computed or sensed by
     the callbacks:
     The simulator callbacks may return values to the simulator.
     Each simulator is equipped with a queue into which it will
@@ -76,24 +72,23 @@ EVEN MORE ADVANCED USE:
     
     The following code creates a callback that upper-cases
     every word it receives. These results are queued for the
-    application to pick from a queue:
+    application to pick from a queue::
     
-    # Callback function that returns a value:
+        # Callback function that returns a value:
+        
+        def timeToDoSomething(word):
+            return word.upper()
     
-    def timeToDoSomething(word):
-        return word.upper()
-
-    mySimulator = EventSimulator() 
-    eventSimulator.start(schedule, timeToDoSomething);
-    eventQueue = eventSimulator.getEventQueue()
-    while (True):
-        try:
-            event = eventQueue.get(block=True, timeout=4.0);
-        except Empty:
-            print("Queue empty for more than 4 seconds. Quitting.")
-            sys.exit();
-        print event;
-    
+        mySimulator = EventSimulator() 
+        eventSimulator.start(schedule, timeToDoSomething);
+        eventQueue = eventSimulator.getEventQueue()
+        while (True):
+            try:
+                event = eventQueue.get(block=True, timeout=4.0);
+            except Empty:
+                print("Queue empty for more than 4 seconds. Quitting.")
+                sys.exit();
+            print event;
 
 The many 'if' statements below just ensure that the robot will do something
 different each time you run this file.

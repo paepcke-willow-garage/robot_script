@@ -1,7 +1,15 @@
 <package>
   <description brief="robot_script">
 
-     robot_script
+  The robot_script package provides a Python based scripting language for the PR2, 
+  and eventuallay other robots. Scripts can move the robot limbs and 
+  head, and move the robot about. Emphasis is on basic, explicit operations;
+  no autonomous behavior, or planning are provided. Scripts may interrogate
+  the state of each joint. A fuzzy equality operator provides tolerance to 
+  small limb position inaccuracies. Scripts can wait for motion completion,
+  or begin multiple motions that execute together. For advanced uses, event
+  simulators can be plugged in, which generate scheduled events that may
+  influence a scripts control flow.
 
   </description>
   <author>Andreas Paepcke</author>
@@ -13,6 +21,11 @@
   <depend package="pr2_gripper_sensor_action"/>
   <depend package="pr2_gripper_sensor_controller"/>
   <depend package="pr2_gripper_sensor_msgs"/>
+  <depend package="pr2_controllers_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="visualization_msgs"/>
+  <depend package="trajectory_msgs"/>
+  <depend package="tf"/>
 
 </package>
 

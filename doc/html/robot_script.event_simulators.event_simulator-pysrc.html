@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>robot_script.event_simulators.event_simulator</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="robot_script-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="robot_script-module.html">Package&nbsp;robot_script</a> ::
+        <a href="robot_script.event_simulators-module.html">Package&nbsp;event_simulators</a> ::
+        Module&nbsp;event_simulator
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="robot_script.event_simulators.event_simulator-pysrc.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<h1 class="epydoc">Source Code for <a href="robot_script.event_simulators.event_simulator-module.html">Module robot_script.event_simulators.event_simulator</a></h1>
+<pre class="py-src">
+<a name="L1"></a><tt class="py-lineno">  1</tt>  <tt class="py-line"><tt class="py-comment">#!/usr/bin/env python</tt> </tt>
+<a name="L2"></a><tt class="py-lineno">  2</tt>  <tt class="py-line"> </tt>
+<a name="L3"></a><tt class="py-lineno">  3</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt class="py-name">threading</tt><tt class="py-op">;</tt> </tt>
+<a name="L4"></a><tt class="py-lineno">  4</tt>  <tt class="py-line"><tt class="py-keyword">from</tt> <tt class="py-name">Queue</tt> <tt class="py-keyword">import</tt> <tt class="py-name">Queue</tt><tt class="py-op">;</tt> </tt>
+<a name="L5"></a><tt class="py-lineno">  5</tt>  <tt class="py-line"><tt class="py-keyword">from</tt> <tt class="py-name">Queue</tt> <tt class="py-keyword">import</tt> <tt class="py-name">Empty</tt><tt class="py-op">;</tt> </tt>
+<a name="L6"></a><tt class="py-lineno">  6</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt class="py-name">time</tt><tt class="py-op">;</tt> </tt>
+<a name="L7"></a><tt class="py-lineno">  7</tt>  <tt class="py-line"><tt class="py-keyword">from</tt> <tt class="py-name">collections</tt> <tt class="py-keyword">import</tt> <tt class="py-name">OrderedDict</tt><tt class="py-op">;</tt> </tt>
+<a name="L8"></a><tt class="py-lineno">  8</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt class="py-name">signal</tt> </tt>
+<a name="L9"></a><tt class="py-lineno">  9</tt>  <tt class="py-line"> </tt>
+<a name="L10"></a><tt class="py-lineno"> 10</tt>  <tt class="py-line"><tt class="py-keyword">import</tt> <tt class="py-name">rospy</tt><tt class="py-op">;</tt> </tt>
+<a name="L11"></a><tt class="py-lineno"> 11</tt>  <tt class="py-line"> </tt>
+<a name="EventSimulator"></a><div id="EventSimulator-def"><a name="L12"></a><tt class="py-lineno"> 12</tt> <a class="py-toggle" href="#" id="EventSimulator-toggle" onclick="return toggle('EventSimulator');">-</a><tt class="py-line"><tt class="py-keyword">class</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.EventSimulator-class.html">EventSimulator</a><tt class="py-op">(</tt><tt class="py-base-class">threading</tt><tt class="py-op">.</tt><tt class="py-base-class">Thread</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="EventSimulator-collapsed" style="display:none;" pad="+++" indent="++++"></div><div id="EventSimulator-expanded"><a name="L13"></a><tt class="py-lineno"> 13</tt>  <tt class="py-line">    <tt class="py-docstring">'''</tt> </tt>
+<a name="L14"></a><tt class="py-lineno"> 14</tt>  <tt class="py-line"><tt class="py-docstring">    Superclass for all robot_script event simulation applications. </tt> </tt>
+<a name="L15"></a><tt class="py-lineno"> 15</tt>  <tt class="py-line"><tt class="py-docstring">    Takes a schedule and a callback, and invokes the callback at</tt> </tt>
+<a name="L16"></a><tt class="py-lineno"> 16</tt>  <tt class="py-line"><tt class="py-docstring">    times determined by the schedule. Each callback invokation is</tt> </tt>
+<a name="L17"></a><tt class="py-lineno"> 17</tt>  <tt class="py-line"><tt class="py-docstring">    passed an argument that is specified by the schedule. Example</tt> </tt>
+<a name="L18"></a><tt class="py-lineno"> 18</tt>  <tt class="py-line"><tt class="py-docstring">    schedule::</tt> </tt>
+<a name="L19"></a><tt class="py-lineno"> 19</tt>  <tt class="py-line"><tt class="py-docstring">    </tt> </tt>
+<a name="L20"></a><tt class="py-lineno"> 20</tt>  <tt class="py-line"><tt class="py-docstring">                schedule = OrderedDict();</tt> </tt>
+<a name="L21"></a><tt class="py-lineno"> 21</tt>  <tt class="py-line"><tt class="py-docstring">                schedule[2.0] = 'This';</tt> </tt>
+<a name="L22"></a><tt class="py-lineno"> 22</tt>  <tt class="py-line"><tt class="py-docstring">                schedule[5.0] = 'is';</tt> </tt>
+<a name="L23"></a><tt class="py-lineno"> 23</tt>  <tt class="py-line"><tt class="py-docstring">                schedule[6.0] = 'a';</tt> </tt>
+<a name="L24"></a><tt class="py-lineno"> 24</tt>  <tt class="py-line"><tt class="py-docstring">                schedule[7.2] = 'test';</tt> </tt>
+<a name="L25"></a><tt class="py-lineno"> 25</tt>  <tt class="py-line"><tt class="py-docstring">               </tt> </tt>
+<a name="L26"></a><tt class="py-lineno"> 26</tt>  <tt class="py-line"><tt class="py-docstring">    This schedule invokes the callback at 2.0 seconds from program start,</tt> </tt>
+<a name="L27"></a><tt class="py-lineno"> 27</tt>  <tt class="py-line"><tt class="py-docstring">    and at 5, 6, and 7.2 seconds. The callback argument is the dict value</tt> </tt>
+<a name="L28"></a><tt class="py-lineno"> 28</tt>  <tt class="py-line"><tt class="py-docstring">    corresponding to the time. See example in __main__.</tt> </tt>
+<a name="L29"></a><tt class="py-lineno"> 29</tt>  <tt class="py-line"><tt class="py-docstring">    </tt> </tt>
+<a name="L30"></a><tt class="py-lineno"> 30</tt>  <tt class="py-line"><tt class="py-docstring">    The simulator runs in a separate thread, which is started by calling</tt> </tt>
+<a name="L31"></a><tt class="py-lineno"> 31</tt>  <tt class="py-line"><tt class="py-docstring">    start(). Make sure that your subclasses invoked this superclass' start()</tt> </tt>
+<a name="L32"></a><tt class="py-lineno"> 32</tt>  <tt class="py-line"><tt class="py-docstring">    method.</tt> </tt>
+<a name="L33"></a><tt class="py-lineno"> 33</tt>  <tt class="py-line"><tt class="py-docstring">    </tt> </tt>
+<a name="L34"></a><tt class="py-lineno"> 34</tt>  <tt class="py-line"><tt class="py-docstring">    The callback function may return a value. This value is pushed into an</tt> </tt>
+<a name="L35"></a><tt class="py-lineno"> 35</tt>  <tt class="py-line"><tt class="py-docstring">    eventQueue that may be access by other applications. Applications may</tt> </tt>
+<a name="L36"></a><tt class="py-lineno"> 36</tt>  <tt class="py-line"><tt class="py-docstring">    obtain the eventQueue via getEventQueue(). See Python's built-in Queue</tt> </tt>
+<a name="L37"></a><tt class="py-lineno"> 37</tt>  <tt class="py-line"><tt class="py-docstring">    class for how applications may feed from that queue.</tt> </tt>
+<a name="L38"></a><tt class="py-lineno"> 38</tt>  <tt class="py-line"><tt class="py-docstring">    '''</tt> </tt>
+<a name="L39"></a><tt class="py-lineno"> 39</tt>  <tt class="py-line">     </tt>
+<a name="EventSimulator.start"></a><div id="EventSimulator.start-def"><a name="L40"></a><tt class="py-lineno"> 40</tt> <a class="py-toggle" href="#" id="EventSimulator.start-toggle" onclick="return toggle('EventSimulator.start');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.EventSimulator-class.html#start">start</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">schedule</tt><tt class="py-op">,</tt> <tt class="py-param">callback</tt><tt class="py-op">,</tt> <tt class="py-param">repeat</tt><tt class="py-op">=</tt><tt class="py-name">False</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="EventSimulator.start-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="EventSimulator.start-expanded"><a name="L41"></a><tt class="py-lineno"> 41</tt>  <tt class="py-line">        <tt class="py-docstring">'''</tt> </tt>
+<a name="L42"></a><tt class="py-lineno"> 42</tt>  <tt class="py-line"><tt class="py-docstring">        Starts the simulator. </tt> </tt>
+<a name="L43"></a><tt class="py-lineno"> 43</tt>  <tt class="py-line"><tt class="py-docstring">        @param schedule: plan with times and callback arguments. </tt> </tt>
+<a name="L44"></a><tt class="py-lineno"> 44</tt>  <tt class="py-line"><tt class="py-docstring">        @type schedule: collections.OrderedDict</tt> </tt>
+<a name="L45"></a><tt class="py-lineno"> 45</tt>  <tt class="py-line"><tt class="py-docstring">        @param callback: callable to invoke at the times indicated in the schedule.</tt> </tt>
+<a name="L46"></a><tt class="py-lineno"> 46</tt>  <tt class="py-line"><tt class="py-docstring">        @type callback: callable</tt> </tt>
+<a name="L47"></a><tt class="py-lineno"> 47</tt>  <tt class="py-line"><tt class="py-docstring">        @param repeat: if True, schedule is excecuted over and over.</tt> </tt>
+<a name="L48"></a><tt class="py-lineno"> 48</tt>  <tt class="py-line"><tt class="py-docstring">        @type repeat: boolean</tt> </tt>
+<a name="L49"></a><tt class="py-lineno"> 49</tt>  <tt class="py-line"><tt class="py-docstring">        '''</tt> </tt>
+<a name="L50"></a><tt class="py-lineno"> 50</tt>  <tt class="py-line">        <tt class="py-name">threading</tt><tt class="py-op">.</tt><tt class="py-name">Thread</tt><tt class="py-op">.</tt><tt id="link-0" class="py-name" targets="Method robot_script.event_simulators.fakeHuman.FakeHuman.__init__()=robot_script.event_simulators.fakeHuman.FakeHuman-class.html#__init__"><a title="robot_script.event_simulators.fakeHuman.FakeHuman.__init__" class="py-name" href="#" onclick="return doclink('link-0', '__init__', 'link-0');">__init__</a></tt><tt class="py-op">(</tt><tt class="py-name">self</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L51"></a><tt class="py-lineno"> 51</tt>  <tt class="py-line">        <tt class="py-keyword">if</tt> <tt id="link-1" class="py-name" targets="Variable robot_script.example.schedule=robot_script.example-module.html#schedule"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-1', 'schedule', 'link-1');">schedule</a></tt> <tt class="py-keyword">is</tt> <tt class="py-name">None</tt> <tt class="py-keyword">or</tt> <tt class="py-name">len</tt><tt class="py-op">(</tt><tt id="link-2" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-2', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">)</tt> <tt class="py-op">==</tt> <tt class="py-number">0</tt><tt class="py-op">:</tt> </tt>
+<a name="L52"></a><tt class="py-lineno"> 52</tt>  <tt class="py-line">            <tt class="py-keyword">raise</tt> <tt class="py-name">ValueError</tt><tt class="py-op">(</tt><tt class="py-string">"Schedule for EventSimulator must have at least one entry."</tt><tt class="py-op">)</tt> </tt>
+<a name="L53"></a><tt class="py-lineno"> 53</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-3" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-3', 'schedule', 'link-1');">schedule</a></tt>    <tt class="py-op">=</tt> <tt id="link-4" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-4', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">;</tt> </tt>
+<a name="L54"></a><tt class="py-lineno"> 54</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">callback</tt>    <tt class="py-op">=</tt> <tt class="py-name">callback</tt><tt class="py-op">;</tt> </tt>
+<a name="L55"></a><tt class="py-lineno"> 55</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">repeat</tt>      <tt class="py-op">=</tt> <tt class="py-name">repeat</tt><tt class="py-op">;</tt> </tt>
+<a name="L56"></a><tt class="py-lineno"> 56</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-5" class="py-name" targets="Variable robot_script.example.eventQueue=robot_script.example-module.html#eventQueue"><a title="robot_script.example.eventQueue" class="py-name" href="#" onclick="return doclink('link-5', 'eventQueue', 'link-5');">eventQueue</a></tt>  <tt class="py-op">=</tt> <tt class="py-name">Queue</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L57"></a><tt class="py-lineno"> 57</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">keepRunning</tt> <tt class="py-op">=</tt> <tt class="py-name">True</tt><tt class="py-op">;</tt> </tt>
+<a name="L58"></a><tt class="py-lineno"> 58</tt>  <tt class="py-line">        <tt class="py-name">signal</tt><tt class="py-op">.</tt><tt class="py-name">signal</tt><tt class="py-op">(</tt><tt class="py-name">signal</tt><tt class="py-op">.</tt><tt class="py-name">SIGINT</tt><tt class="py-op">,</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-6" class="py-name" targets="Method robot_script.event_simulators.event_simulator.EventSimulator.sigintHandler()=robot_script.event_simulators.event_simulator.EventSimulator-class.html#sigintHandler"><a title="robot_script.event_simulators.event_simulator.EventSimulator.sigintHandler" class="py-name" href="#" onclick="return doclink('link-6', 'sigintHandler', 'link-6');">sigintHandler</a></tt><tt class="py-op">)</tt><tt class="py-op">;</tt>     </tt>
+<a name="L59"></a><tt class="py-lineno"> 59</tt>  <tt class="py-line">        <tt class="py-name">super</tt><tt class="py-op">(</tt><tt id="link-7" class="py-name" targets="Class robot_script.event_simulators.event_simulator.EventSimulator=robot_script.event_simulators.event_simulator.EventSimulator-class.html"><a title="robot_script.event_simulators.event_simulator.EventSimulator" class="py-name" href="#" onclick="return doclink('link-7', 'EventSimulator', 'link-7');">EventSimulator</a></tt><tt class="py-op">,</tt><tt class="py-name">self</tt><tt class="py-op">)</tt><tt class="py-op">.</tt><tt id="link-8" class="py-name" targets="Method robot_script.event_simulators.event_simulator.EventSimulator.start()=robot_script.event_simulators.event_simulator.EventSimulator-class.html#start,Method robot_script.event_simulators.fakeHuman.FakeHuman.start()=robot_script.event_simulators.fakeHuman.FakeHuman-class.html#start"><a title="robot_script.event_simulators.event_simulator.EventSimulator.start
+robot_script.event_simulators.fakeHuman.FakeHuman.start" class="py-name" href="#" onclick="return doclink('link-8', 'start', 'link-8');">start</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+</div><a name="L60"></a><tt class="py-lineno"> 60</tt>  <tt class="py-line">         </tt>
+<a name="EventSimulator.getEventQueue"></a><div id="EventSimulator.getEventQueue-def"><a name="L61"></a><tt class="py-lineno"> 61</tt> <a class="py-toggle" href="#" id="EventSimulator.getEventQueue-toggle" onclick="return toggle('EventSimulator.getEventQueue');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.EventSimulator-class.html#getEventQueue">getEventQueue</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="EventSimulator.getEventQueue-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="EventSimulator.getEventQueue-expanded"><a name="L62"></a><tt class="py-lineno"> 62</tt>  <tt class="py-line">        <tt class="py-docstring">'''</tt> </tt>
+<a name="L63"></a><tt class="py-lineno"> 63</tt>  <tt class="py-line"><tt class="py-docstring">        Return this event simulator's event queue. This queue is fed with</tt> </tt>
+<a name="L64"></a><tt class="py-lineno"> 64</tt>  <tt class="py-line"><tt class="py-docstring">        return values from the callbacks.</tt> </tt>
+<a name="L65"></a><tt class="py-lineno"> 65</tt>  <tt class="py-line"><tt class="py-docstring">        '''</tt> </tt>
+<a name="L66"></a><tt class="py-lineno"> 66</tt>  <tt class="py-line">        <tt class="py-keyword">return</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-9" class="py-name"><a title="robot_script.example.eventQueue" class="py-name" href="#" onclick="return doclink('link-9', 'eventQueue', 'link-5');">eventQueue</a></tt><tt class="py-op">;</tt> </tt>
+</div><a name="L67"></a><tt class="py-lineno"> 67</tt>  <tt class="py-line">         </tt>
+<a name="EventSimulator.run"></a><div id="EventSimulator.run-def"><a name="L68"></a><tt class="py-lineno"> 68</tt> <a class="py-toggle" href="#" id="EventSimulator.run-toggle" onclick="return toggle('EventSimulator.run');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.EventSimulator-class.html#run">run</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="EventSimulator.run-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="EventSimulator.run-expanded"><a name="L69"></a><tt class="py-lineno"> 69</tt>  <tt class="py-line">        <tt class="py-docstring">'''</tt> </tt>
+<a name="L70"></a><tt class="py-lineno"> 70</tt>  <tt class="py-line"><tt class="py-docstring">        Thread loop: works through the schedule, sleeping as needed.</tt> </tt>
+<a name="L71"></a><tt class="py-lineno"> 71</tt>  <tt class="py-line"><tt class="py-docstring">        '''</tt> </tt>
+<a name="L72"></a><tt class="py-lineno"> 72</tt>  <tt class="py-line">        <tt class="py-keyword">while</tt> <tt class="py-op">(</tt><tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">keepRunning</tt> <tt class="py-keyword">and</tt> <tt class="py-keyword">not</tt> <tt class="py-name">rospy</tt><tt class="py-op">.</tt><tt class="py-name">is_shutdown</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+<a name="L73"></a><tt class="py-lineno"> 73</tt>  <tt class="py-line">            <tt class="py-comment"># Start time:</tt> </tt>
+<a name="L74"></a><tt class="py-lineno"> 74</tt>  <tt class="py-line">            <tt class="py-name">prevKeyframeTime</tt> <tt class="py-op">=</tt> <tt class="py-number">0</tt><tt class="py-op">;</tt> </tt>
+<a name="L75"></a><tt class="py-lineno"> 75</tt>  <tt class="py-line">            <tt class="py-keyword">for</tt> <tt class="py-name">actionTime</tt> <tt class="py-keyword">in</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-10" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-10', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">.</tt><tt class="py-name">keys</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+<a name="L76"></a><tt class="py-lineno"> 76</tt>  <tt class="py-line">                <tt class="py-comment"># Schedule is in absolute number of seconds since program</tt> </tt>
+<a name="L77"></a><tt class="py-lineno"> 77</tt>  <tt class="py-line">                <tt class="py-comment"># start. So compute distance between this and prev</tt> </tt>
+<a name="L78"></a><tt class="py-lineno"> 78</tt>  <tt class="py-line">                <tt class="py-comment"># schedule entry:</tt> </tt>
+<a name="L79"></a><tt class="py-lineno"> 79</tt>  <tt class="py-line">                <tt class="py-name">sleepTime</tt> <tt class="py-op">=</tt> <tt class="py-name">actionTime</tt> <tt class="py-op">-</tt> <tt class="py-name">prevKeyframeTime</tt><tt class="py-op">;</tt>  </tt>
+<a name="L80"></a><tt class="py-lineno"> 80</tt>  <tt class="py-line">                <tt class="py-name">time</tt><tt class="py-op">.</tt><tt class="py-name">sleep</tt><tt class="py-op">(</tt><tt class="py-name">sleepTime</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L81"></a><tt class="py-lineno"> 81</tt>  <tt class="py-line">                <tt class="py-keyword">if</tt> <tt class="py-keyword">not</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">keepRunning</tt><tt class="py-op">:</tt> </tt>
+<a name="L82"></a><tt class="py-lineno"> 82</tt>  <tt class="py-line">                    <tt class="py-keyword">return</tt><tt class="py-op">;</tt> </tt>
+<a name="L83"></a><tt class="py-lineno"> 83</tt>  <tt class="py-line">                <tt class="py-name">prevKeyframeTime</tt> <tt class="py-op">=</tt> <tt class="py-name">actionTime</tt><tt class="py-op">;</tt> </tt>
+<a name="L84"></a><tt class="py-lineno"> 84</tt>  <tt class="py-line">                <tt class="py-name">result</tt> <tt class="py-op">=</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">callback</tt><tt class="py-op">(</tt><tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-11" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-11', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">[</tt><tt class="py-name">actionTime</tt><tt class="py-op">]</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L85"></a><tt class="py-lineno"> 85</tt>  <tt class="py-line">                <tt class="py-keyword">if</tt> <tt class="py-name">result</tt> <tt class="py-keyword">is</tt> <tt class="py-keyword">not</tt> <tt class="py-name">None</tt><tt class="py-op">:</tt> </tt>
+<a name="L86"></a><tt class="py-lineno"> 86</tt>  <tt class="py-line">                    <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-12" class="py-name"><a title="robot_script.example.eventQueue" class="py-name" href="#" onclick="return doclink('link-12', 'eventQueue', 'link-5');">eventQueue</a></tt><tt class="py-op">.</tt><tt class="py-name">put</tt><tt class="py-op">(</tt><tt class="py-name">result</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L87"></a><tt class="py-lineno"> 87</tt>  <tt class="py-line">                 </tt>
+<a name="L88"></a><tt class="py-lineno"> 88</tt>  <tt class="py-line">            <tt class="py-keyword">if</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">repeat</tt><tt class="py-op">:</tt> </tt>
+<a name="L89"></a><tt class="py-lineno"> 89</tt>  <tt class="py-line">                <tt class="py-keyword">continue</tt><tt class="py-op">;</tt> </tt>
+<a name="L90"></a><tt class="py-lineno"> 90</tt>  <tt class="py-line">            <tt class="py-keyword">else</tt><tt class="py-op">:</tt> </tt>
+<a name="L91"></a><tt class="py-lineno"> 91</tt>  <tt class="py-line">                <tt class="py-keyword">return</tt><tt class="py-op">;</tt> </tt>
+</div><a name="L92"></a><tt class="py-lineno"> 92</tt>  <tt class="py-line"> </tt>
+<a name="EventSimulator.stop"></a><div id="EventSimulator.stop-def"><a name="L93"></a><tt class="py-lineno"> 93</tt> <a class="py-toggle" href="#" id="EventSimulator.stop-toggle" onclick="return toggle('EventSimulator.stop');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.EventSimulator-class.html#stop">stop</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="EventSimulator.stop-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="EventSimulator.stop-expanded"><a name="L94"></a><tt class="py-lineno"> 94</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">keepRunning</tt> <tt class="py-op">=</tt> <tt class="py-name">False</tt><tt class="py-op">;</tt> </tt>
+</div><a name="L95"></a><tt class="py-lineno"> 95</tt>  <tt class="py-line">         </tt>
+<a name="EventSimulator.sigintHandler"></a><div id="EventSimulator.sigintHandler-def"><a name="L96"></a><tt class="py-lineno"> 96</tt> <a class="py-toggle" href="#" id="EventSimulator.sigintHandler-toggle" onclick="return toggle('EventSimulator.sigintHandler');">-</a><tt class="py-line">    <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.EventSimulator-class.html#sigintHandler">sigintHandler</a><tt class="py-op">(</tt><tt class="py-param">signum</tt><tt class="py-op">,</tt> <tt class="py-param">frame</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="EventSimulator.sigintHandler-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="EventSimulator.sigintHandler-expanded"><a name="L97"></a><tt class="py-lineno"> 97</tt>  <tt class="py-line">        <tt class="py-name">self</tt><tt class="py-op">.</tt><tt id="link-13" class="py-name" targets="Method robot_script.event_simulators.event_simulator.EventSimulator.stop()=robot_script.event_simulators.event_simulator.EventSimulator-class.html#stop"><a title="robot_script.event_simulators.event_simulator.EventSimulator.stop" class="py-name" href="#" onclick="return doclink('link-13', 'stop', 'link-13');">stop</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+</div></div><a name="L98"></a><tt class="py-lineno"> 98</tt>  <tt class="py-line"> </tt>
+<a name="L99"></a><tt class="py-lineno"> 99</tt>  <tt class="py-line"><tt class="py-keyword">if</tt> <tt class="py-name">__name__</tt> <tt class="py-op">==</tt> <tt class="py-string">'__main__'</tt><tt class="py-op">:</tt> </tt>
+<a name="L100"></a><tt class="py-lineno">100</tt>  <tt class="py-line"> </tt>
+<a name="L101"></a><tt class="py-lineno">101</tt>  <tt class="py-line">    <tt class="py-keyword">import</tt> <tt class="py-name">sys</tt> </tt>
+<a name="L102"></a><tt class="py-lineno">102</tt>  <tt class="py-line"> </tt>
+<a name="L103"></a><tt class="py-lineno">103</tt>  <tt class="py-line">    <tt id="link-14" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-14', 'schedule', 'link-1');">schedule</a></tt> <tt class="py-op">=</tt> <tt class="py-name">OrderedDict</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L104"></a><tt class="py-lineno">104</tt>  <tt class="py-line">    <tt id="link-15" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-15', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">[</tt><tt class="py-number">2.0</tt><tt class="py-op">]</tt> <tt class="py-op">=</tt> <tt class="py-string">'This'</tt><tt class="py-op">;</tt> </tt>
+<a name="L105"></a><tt class="py-lineno">105</tt>  <tt class="py-line">    <tt id="link-16" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-16', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">[</tt><tt class="py-number">5.0</tt><tt class="py-op">]</tt> <tt class="py-op">=</tt> <tt class="py-string">'is'</tt><tt class="py-op">;</tt> </tt>
+<a name="L106"></a><tt class="py-lineno">106</tt>  <tt class="py-line">    <tt id="link-17" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-17', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">[</tt><tt class="py-number">6.0</tt><tt class="py-op">]</tt> <tt class="py-op">=</tt> <tt class="py-string">'a'</tt><tt class="py-op">;</tt> </tt>
+<a name="L107"></a><tt class="py-lineno">107</tt>  <tt class="py-line">    <tt id="link-18" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-18', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">[</tt><tt class="py-number">7.2</tt><tt class="py-op">]</tt> <tt class="py-op">=</tt> <tt class="py-string">'test'</tt><tt class="py-op">;</tt> </tt>
+<a name="L108"></a><tt class="py-lineno">108</tt>  <tt class="py-line">     </tt>
+<a name="MyEvents"></a><div id="MyEvents-def"><a name="L109"></a><tt class="py-lineno">109</tt> <a class="py-toggle" href="#" id="MyEvents-toggle" onclick="return toggle('MyEvents');">-</a><tt class="py-line">    <tt class="py-keyword">class</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.MyEvents-class.html">MyEvents</a><tt class="py-op">(</tt><tt class="py-base-class">EventSimulator</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="MyEvents-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="MyEvents-expanded"><a name="L110"></a><tt class="py-lineno">110</tt>  <tt class="py-line">         </tt>
+<a name="MyEvents.start"></a><div id="MyEvents.start-def"><a name="L111"></a><tt class="py-lineno">111</tt> <a class="py-toggle" href="#" id="MyEvents.start-toggle" onclick="return toggle('MyEvents.start');">-</a><tt class="py-line">        <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.MyEvents-class.html#start">start</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">schedule</tt><tt class="py-op">,</tt> <tt class="py-param">repeat</tt><tt class="py-op">=</tt><tt class="py-name">False</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="MyEvents.start-collapsed" style="display:none;" pad="+++" indent="++++++++++++++++"></div><div id="MyEvents.start-expanded"><a name="L112"></a><tt class="py-lineno">112</tt>  <tt class="py-line">            <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">startTime</tt> <tt class="py-op">=</tt> <tt class="py-name">time</tt><tt class="py-op">.</tt><tt class="py-name">time</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L113"></a><tt class="py-lineno">113</tt>  <tt class="py-line">            <tt class="py-name">super</tt><tt class="py-op">(</tt><tt class="py-name">MyEvents</tt><tt class="py-op">,</tt> <tt class="py-name">self</tt><tt class="py-op">)</tt><tt class="py-op">.</tt><tt id="link-19" class="py-name"><a title="robot_script.event_simulators.event_simulator.EventSimulator.start
+robot_script.event_simulators.fakeHuman.FakeHuman.start" class="py-name" href="#" onclick="return doclink('link-19', 'start', 'link-8');">start</a></tt><tt class="py-op">(</tt><tt id="link-20" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-20', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">,</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">printTime</tt><tt class="py-op">,</tt> <tt class="py-name">repeat</tt><tt class="py-op">=</tt><tt class="py-name">repeat</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+</div><a name="L114"></a><tt class="py-lineno">114</tt>  <tt class="py-line">         </tt>
+<a name="MyEvents.printTime"></a><div id="MyEvents.printTime-def"><a name="L115"></a><tt class="py-lineno">115</tt> <a class="py-toggle" href="#" id="MyEvents.printTime-toggle" onclick="return toggle('MyEvents.printTime');">-</a><tt class="py-line">        <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.MyEvents-class.html#printTime">printTime</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">word</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="MyEvents.printTime-collapsed" style="display:none;" pad="+++" indent="++++++++++++++++"></div><div id="MyEvents.printTime-expanded"><a name="L116"></a><tt class="py-lineno">116</tt>  <tt class="py-line">            <tt class="py-keyword">print</tt> <tt class="py-name">str</tt><tt class="py-op">(</tt><tt class="py-name">time</tt><tt class="py-op">.</tt><tt class="py-name">time</tt><tt class="py-op">(</tt><tt class="py-op">)</tt> <tt class="py-op">-</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">startTime</tt><tt class="py-op">)</tt> <tt class="py-op">+</tt> <tt class="py-string">": "</tt> <tt class="py-op">+</tt> <tt class="py-name">word</tt><tt class="py-op">;</tt> </tt>
+<a name="L117"></a><tt class="py-lineno">117</tt>  <tt class="py-line">            <tt class="py-keyword">return</tt> <tt class="py-name">None</tt><tt class="py-op">;</tt> </tt>
+</div></div><a name="L118"></a><tt class="py-lineno">118</tt>  <tt class="py-line"> </tt>
+<a name="L119"></a><tt class="py-lineno">119</tt>  <tt class="py-line">         </tt>
+<a name="L120"></a><tt class="py-lineno">120</tt>  <tt class="py-line">    <tt class="py-name">MyEvents</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">.</tt><tt id="link-21" class="py-name"><a title="robot_script.event_simulators.event_simulator.EventSimulator.start
+robot_script.event_simulators.fakeHuman.FakeHuman.start" class="py-name" href="#" onclick="return doclink('link-21', 'start', 'link-8');">start</a></tt><tt class="py-op">(</tt><tt id="link-22" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-22', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L121"></a><tt class="py-lineno">121</tt>  <tt class="py-line">     </tt>
+<a name="MyComplexEvents"></a><div id="MyComplexEvents-def"><a name="L122"></a><tt class="py-lineno">122</tt> <a class="py-toggle" href="#" id="MyComplexEvents-toggle" onclick="return toggle('MyComplexEvents');">-</a><tt class="py-line">    <tt class="py-keyword">class</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.MyComplexEvents-class.html">MyComplexEvents</a><tt class="py-op">(</tt><tt class="py-base-class">EventSimulator</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="MyComplexEvents-collapsed" style="display:none;" pad="+++" indent="++++++++"></div><div id="MyComplexEvents-expanded"><a name="MyComplexEvents.start"></a><div id="MyComplexEvents.start-def"><a name="L123"></a><tt class="py-lineno">123</tt> <a class="py-toggle" href="#" id="MyComplexEvents.start-toggle" onclick="return toggle('MyComplexEvents.start');">-</a><tt class="py-line">        <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.MyComplexEvents-class.html#start">start</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">schedule</tt><tt class="py-op">,</tt> <tt class="py-param">repeat</tt><tt class="py-op">=</tt><tt class="py-name">False</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="MyComplexEvents.start-collapsed" style="display:none;" pad="+++" indent="++++++++++++++++"></div><div id="MyComplexEvents.start-expanded"><a name="L124"></a><tt class="py-lineno">124</tt>  <tt class="py-line">            <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">startTime</tt> <tt class="py-op">=</tt> <tt class="py-name">time</tt><tt class="py-op">.</tt><tt class="py-name">time</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L125"></a><tt class="py-lineno">125</tt>  <tt class="py-line">            <tt class="py-name">super</tt><tt class="py-op">(</tt><tt class="py-name">MyComplexEvents</tt><tt class="py-op">,</tt> <tt class="py-name">self</tt><tt class="py-op">)</tt><tt class="py-op">.</tt><tt id="link-23" class="py-name"><a title="robot_script.event_simulators.event_simulator.EventSimulator.start
+robot_script.event_simulators.fakeHuman.FakeHuman.start" class="py-name" href="#" onclick="return doclink('link-23', 'start', 'link-8');">start</a></tt><tt class="py-op">(</tt><tt id="link-24" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-24', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">,</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">queuePrintLine</tt><tt class="py-op">,</tt> <tt class="py-name">repeat</tt><tt class="py-op">=</tt><tt class="py-name">repeat</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+</div><a name="L126"></a><tt class="py-lineno">126</tt>  <tt class="py-line">         </tt>
+<a name="MyComplexEvents.queuePrintLine"></a><div id="MyComplexEvents.queuePrintLine-def"><a name="L127"></a><tt class="py-lineno">127</tt> <a class="py-toggle" href="#" id="MyComplexEvents.queuePrintLine-toggle" onclick="return toggle('MyComplexEvents.queuePrintLine');">-</a><tt class="py-line">        <tt class="py-keyword">def</tt> <a class="py-def-name" href="robot_script.event_simulators.event_simulator.MyComplexEvents-class.html#queuePrintLine">queuePrintLine</a><tt class="py-op">(</tt><tt class="py-param">self</tt><tt class="py-op">,</tt> <tt class="py-param">word</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+</div><div id="MyComplexEvents.queuePrintLine-collapsed" style="display:none;" pad="+++" indent="++++++++++++++++"></div><div id="MyComplexEvents.queuePrintLine-expanded"><a name="L128"></a><tt class="py-lineno">128</tt>  <tt class="py-line">            <tt class="py-keyword">return</tt> <tt class="py-name">str</tt><tt class="py-op">(</tt><tt class="py-name">time</tt><tt class="py-op">.</tt><tt class="py-name">time</tt><tt class="py-op">(</tt><tt class="py-op">)</tt> <tt class="py-op">-</tt> <tt class="py-name">self</tt><tt class="py-op">.</tt><tt class="py-name">startTime</tt><tt class="py-op">)</tt> <tt class="py-op">+</tt> <tt class="py-string">": "</tt> <tt class="py-op">+</tt> <tt class="py-name">word</tt> <tt class="py-op">+</tt> <tt class="py-string">" (via queue)"</tt><tt class="py-op">;</tt> </tt>
+</div></div><a name="L129"></a><tt class="py-lineno">129</tt>  <tt class="py-line"> </tt>
+<a name="L130"></a><tt class="py-lineno">130</tt>  <tt class="py-line">    <tt class="py-name">eventSimulator</tt> <tt class="py-op">=</tt> <tt class="py-name">MyComplexEvents</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L131"></a><tt class="py-lineno">131</tt>  <tt class="py-line">    <tt class="py-name">eventSimulator</tt><tt class="py-op">.</tt><tt id="link-25" class="py-name"><a title="robot_script.event_simulators.event_simulator.EventSimulator.start
+robot_script.event_simulators.fakeHuman.FakeHuman.start" class="py-name" href="#" onclick="return doclink('link-25', 'start', 'link-8');">start</a></tt><tt class="py-op">(</tt><tt id="link-26" class="py-name"><a title="robot_script.example.schedule" class="py-name" href="#" onclick="return doclink('link-26', 'schedule', 'link-1');">schedule</a></tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L132"></a><tt class="py-lineno">132</tt>  <tt class="py-line">    <tt id="link-27" class="py-name"><a title="robot_script.example.eventQueue" class="py-name" href="#" onclick="return doclink('link-27', 'eventQueue', 'link-5');">eventQueue</a></tt> <tt class="py-op">=</tt> <tt class="py-name">eventSimulator</tt><tt class="py-op">.</tt><tt id="link-28" class="py-name" targets="Method robot_script.event_simulators.event_simulator.EventSimulator.getEventQueue()=robot_script.event_simulators.event_simulator.EventSimulator-class.html#getEventQueue"><a title="robot_script.event_simulators.event_simulator.EventSimulator.getEventQueue" class="py-name" href="#" onclick="return doclink('link-28', 'getEventQueue', 'link-28');">getEventQueue</a></tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L133"></a><tt class="py-lineno">133</tt>  <tt class="py-line">    <tt class="py-keyword">while</tt> <tt class="py-op">(</tt><tt class="py-name">True</tt><tt class="py-op">)</tt><tt class="py-op">:</tt> </tt>
+<a name="L134"></a><tt class="py-lineno">134</tt>  <tt class="py-line">        <tt class="py-keyword">try</tt><tt class="py-op">:</tt> </tt>
+<a name="L135"></a><tt class="py-lineno">135</tt>  <tt class="py-line">            <tt class="py-name">event</tt> <tt class="py-op">=</tt> <tt id="link-29" class="py-name"><a title="robot_script.example.eventQueue" class="py-name" href="#" onclick="return doclink('link-29', 'eventQueue', 'link-5');">eventQueue</a></tt><tt class="py-op">.</tt><tt class="py-name">get</tt><tt class="py-op">(</tt><tt class="py-name">block</tt><tt class="py-op">=</tt><tt class="py-name">True</tt><tt class="py-op">,</tt> <tt class="py-name">timeout</tt><tt class="py-op">=</tt><tt class="py-number">4.0</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L136"></a><tt class="py-lineno">136</tt>  <tt class="py-line">        <tt class="py-keyword">except</tt> <tt class="py-name">Empty</tt><tt class="py-op">:</tt> </tt>
+<a name="L137"></a><tt class="py-lineno">137</tt>  <tt class="py-line">            <tt class="py-keyword">print</tt><tt class="py-op">(</tt><tt class="py-string">"Queue empty for more than 4 seconds. Quitting."</tt><tt class="py-op">)</tt> </tt>
+<a name="L138"></a><tt class="py-lineno">138</tt>  <tt class="py-line">            <tt class="py-name">sys</tt><tt class="py-op">.</tt><tt class="py-name">exit</tt><tt class="py-op">(</tt><tt class="py-op">)</tt><tt class="py-op">;</tt> </tt>
+<a name="L139"></a><tt class="py-lineno">139</tt>  <tt class="py-line">        <tt class="py-keyword">print</tt> <tt class="py-name">event</tt><tt class="py-op">;</tt> </tt>
+<a name="L140"></a><tt class="py-lineno">140</tt>  <tt class="py-line"> </tt><script type="text/javascript">
+<!--
+expandto(location.href);
+// -->
+</script>
+</pre>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="robot_script-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Thu May  2 16:55:57 2013
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

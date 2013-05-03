@@ -1,0 +1,31 @@
+<<PackageHeader(robot_script)>>
+
+{{attachment:wiimoteOverview.jpg|A Wiimote|align="right"}}
+<<TableOfContents(4)>>
+
+== API Stability ==
+
+This package should be considered as '''stable,''' except for support of the Classic controller, which requires additional testing.
+
+== System Dependencies ==
+The package depends on the third-party cwiid wiimote bluetooth
+interface. With permission of the author, Donnie Smith, cwiid is 
+distributed as the ROS package `cwiid`.
+##We are currently checking into integrating a working
+##version into the ROS distribution. Same for the Linux Bluetooth driver. Meanwhile, ##please refer to [[wiimote/SysdepInstructions]] to ensure you use the correct cwiid ##module.
+
+Python needs to be installed on your system. This package has been
+tested under Python 2.5.2 and 2.6.5.
+
+== Installing the wiimote Package ==
+
+Check out the wiimote package, and `rosmake` to ready the package for
+operation. Plug the Bluetooth dongle into your machine's USB port.
+
+If you have the Motion+ Wiimote attachment, plug it into the bottom of
+your Wiimote device.
+
+Make sure your Wiimote's batteries are charged.
+
+== Nodes ==
+{{{

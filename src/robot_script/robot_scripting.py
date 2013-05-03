@@ -6,12 +6,13 @@ pr2_simple_interface underneath. Adds:
    - Control of individual arm joints, in addition to the all-joints versions
    - Sensor reading, including state of each arm joint
    - Arrangement to anticipate scripting for other types of robots
+   - Base motion
+   - Event injection into scripts
    
 @author: Andreas Paepcke, based on Austin Hendrix' pr2_simple_interface, and Maya Cakmak's fake_robot.py
 '''
 
 import roslib
-roslib.load_manifest('proximity_animation')
 roslib.load_manifest('geometry_msgs')
 roslib.load_manifest('tf')
 roslib.load_manifest('rospy')

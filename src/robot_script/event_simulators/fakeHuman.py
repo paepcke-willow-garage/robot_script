@@ -74,14 +74,16 @@ class FakeHuman(EventSimulator):
         Called repeatedly from the EventSimulator thread. Moves the Rviz human towards
         various locations in small increments. Locations, speed, and move times are
         taken from self.motionSchedule, which was passed into the start() method.
-        Example schedule is the following dict (keys are fractional seconds): 
-			 motionSchedule[2]  = None;
-			 motionSchedule[5]  = {target: [2,-1], speed: [0.1,0.03]}; 
-			 motionSchedule[10] = None;
-			 motionSchedule[12] = {target: [4,-2], speed: [.1,.055]}; 
-			 motionSchedule[16] = None;
-			 motionSchedule[20] = {target: [0.6,.5], speed: [.08,.1]};
-			 motionSchedule[27] = None;    
+        Example schedule is the following dict (keys are fractional seconds):: 
+        
+                motionSchedule[2]  = None;
+                motionSchedule[5]  = {target: [2,-1], speed: [0.1,0.03]}; 
+                motionSchedule[10] = None;
+                motionSchedule[12] = {target: [4,-2], speed: [.1,.055]}; 
+                motionSchedule[16] = None;
+                motionSchedule[20] = {target: [0.6,.5], speed: [.08,.1]};
+                motionSchedule[27] = None;    
+		
         @param dummy: EventSimulator calls with an argument, which is None in our case, and unused.
         @type dummy: None.
         '''
