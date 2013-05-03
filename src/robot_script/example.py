@@ -97,7 +97,6 @@ different each time you run this file.
 
 from robot_scripting import PR2RobotScript as pr2
 from robot_scripting import aboutEq
-from robot_scripting import FullPose
 
 LEFT  = pr2.LEFT
 RIGHT = pr2.RIGHT

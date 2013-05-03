@@ -54,6 +54,18 @@ class FakeHuman(EventSimulator):
                  (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w),
                  rospy.Time.now(), name, parent)
 
+    def getPlanarDistance(self, pose):
+        '''
+        Compute distance of a given pose from its origin in a 2d plane.
+        @param pose: pose to examine
+        @type pose: Pose
+        @return: linear distance
+        @rType: float
+        '''
+        vec = numpy.array((pose.position.x, pose.position.y))
+        self.planarDistance = numpy.linalg.norm(vec) 
+        return self.planarDistance
+
     def getDiff(self, target, current, speed):
     	diff = target - current
     	if diff > speed:
@@ -117,9 +129,18 @@ class FakeHuman(EventSimulator):
         
         self.target = keyframeTarget;
         # Move a little bit:
-        self.moveTowardsTarget(keyframeSpeed);
+        humanReachedDestination = self.moveTowardsTarget(keyframeSpeed);
         self.visualizeFakeHuman();
-
+        # If the human reached a keyframe destination,
+        # return the new xy to the simulator, which will put it
+        # into its out queue: 
+        # ****** This never goes true. Need planar distance computation.
+        # ****** method getPlanarDistance is already in this file, copied
+        # ****** from fakeRobot.py in proximity.
+        if humanReachedDestination:
+            return keyframeTarget;
+        else:
+            return None;
 
     def visualizeFakeHuman(self):
         # Visualize the fake human:

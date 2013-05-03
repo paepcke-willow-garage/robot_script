@@ -15,5 +15,213 @@ tested under Python 2.7 under ROS fuerte, Ubuntu precise.
 Check out the robot_script package, and `rosmake` to ready the package for
 operation.
 
-== Nodes ==
+== Example ==
+
+The following code snippet checks whether the head tilt joint is roughly
+at 30 degrees. If so, the head is pointed such that pan is -100 degrees,
+tilt is at -20. The head will take 5 seconds to reach its destination.
+The statement following this conditional will proceed immediately, not
+awaiting the head's motion to complete:
+
 {{{
+if aboutEq('head_tilt_joint', 30):
+    pr2.lookAt(-100, -20 , 5, wait=False)
+else:
+    pr2.lookAt(+100, +30 , 5, wait=False)
+}}}
+
+The next line moves the robot 30cm straight forward, maintaining a
+zero rotation of its body. The parameters are x (forward/back), 
+y (left/right), and body rotation (degrees):
+
+{{{pr2.moveBase(place=(0.3,0.0,0.0))}}}
+
+== Command List ==
+
+Here is a complete list of commands. Details in the following section.
+
+ * {{{pr2.openGripper(side)}}}
+ * {{{pr2.closeGripper(side)}}}
+ * {{{pr2.tiltHead(degreesTilt, duration=1.0, wait=True)}}}:
+ * {{{pr2.panHead(degreesPan, duration=1.0, wait=True)}}}
+ * {{{pr2.lookAt(degreesPan, degreesTilt, duration=1.0, wait=True)}}}
+ * {{{pr2.moveArmJoint(jointName, newAngle, duration=2.0, wait=True)}}}
+ * {{{pr2.moveArmJoint([jointName1, jointName2, ...],[newAngle1, newAngle2, ...],duration=2.0, wait=True)}}}
+ * {{{pr2.moveBase(place=(x,y,z), rotation=deg, duration=3)}}}
+ * {{{pr2.getSensorReading(sensorName)}}}
+ * {{{pr2.aboutEq(jointName, value)}}}
+ * {{{pr2.setTorso(height, duration=10.0, wait=True)}}}
+ * {{{rospy.timer.sleep(seconds)}}}
+
+'''Advanced: EventSimulator Methods:'''
+
+ * {{{start(schedule, callbackFunction, repeat=False)}}}
+ * {{{getEventQueue()}}}
+ * {{{stop()}}}
+
+== Detail Statement Definitions ==
+
+For all definitions we assume that the script includes the following head statements: 
+
+{{{
+from robot_scripting import PR2RobotScript as pr2
+from robot_scripting import aboutEq
+from robot_scripting import FullPose
+
+# When a function takes a parameter called 'side',
+# use LEFT, RIGHT, or BOTH:
+
+LEFT  = pr2.LEFT
+RIGHT = pr2.RIGHT
+BOTH  = pr2.BOTH
+}}}
+
+=== Gripper and Head ===
+    
+{{{pr2.openGripper(side)}}}
+   Opens one or both robot grippers all the way.
+{{{pr2.closeGripper(side)}}}
+   Closes one or both robot grippers all the way.
+{{{pr2.tiltHead(degreesTilt, duration=1.0, wait=True)}}}:
+   Tilts the head forward or back. Range is 60 to -30 degrees			     
+{{{pr2.panHead(degreesPan, duration=1.0, wait=True)}}}
+   Pans the head from side to side. Range is 180 to -180.
+{{{pr2.lookAt(degreesPan, degreesTilt, duration=1.0, wait=True)}}}
+   Combines pan and tilt into one smooth motion.
+ 
+=== Moving the arm joints one at a time, or together ===
+
+{{{pr2.moveArmJoint(jointName, newAngle, duration=2.0, wait=True)}}}
+   or:
+{{{pr2.moveArmJoint([jointName1, jointName2, ...],[newAngle1, newAngle2, ...],duration=2.0, wait=True)}}}
+   Notice that the first form names one joint, and one angle. The second form allows for multiple joints and their angles to be named together for one smooth motion.
+
+The joints and their legal ranges are:
+ * l_shoulder_pan_joint (-130 to 40 deg) or r_shoulder_pan_joint (40 to -130 deg)
+ * l_shoulder_lift_joint or r_shoulder_lift_joint (80 to -130 deg)
+ * l_upper_arm_roll_joint(-224 to 44 deg) or r_upper_arm_roll_joint (44 to -224 deg)
+ * l_elbow_flex_joint or r_elbow_flex_joint (133 to 0 deg)
+ * l_forearm_roll_joint or r_forearm_roll_joint (continuous)
+ * l_wrist_flex_joint or r_wrist_flex_joint (130 to 0 deg)
+ * l_wrist_roll_joint or r_wrist_roll_joint (continuous)
+
+=== Moving the whole robot (the base) === 
+
+Scripts can move the robot's body (also called its `base`) to a place, and rotate its body at the same time:
+ * {{{pr2.moveBase(place=(x,y,z), rotation=deg, duration=3)}}}
+For the PR2 robot the z axis is always zero. But for ROS controlled aircraft this dimension is required.
+ 
+=== Reading joint values ===
+
+It is often useful to check the angle of a joint. This information is obtained by the command:
+ * {{{pr2.getSensorReading(sensorName)}}}
+In the future, sensors other than joints may be added.
+
+When setting a robot joint to a specific value, such as 30 degrees, the mechanics often do not zero in on that precise angle. Instead a joint sensor might read 30.05, or 29.9. In order to allow for these inaccuracies when checking a joint angle, use the following command in your conditional statements:
+ * aboutEq(jointName, value)
+Example: 
+{{{
+if aboutEq('head_pan_joint', 60):
+    do one thing
+else:
+    do another thing
+}}}
+
+=== Raising/lowering the torso ===
+ * {{{pr2.setTorso(height, duration=10.0, wait=True)}}}
+The PR2's torso can range from 0.3 meters (30cm) to 0 meters.
+
+=== Temporarily pausing execution (but already initiated robot motions continue) ===
+ * {{{rospy.timer.sleep(seconds)}}}
+
+=== More examples ===
+
+ * {{{pr2.tiltHead(15 + pr2.getSensorReading("head_tilt_joint"), 1)}}}
+ Raise the head tilt to 15 degrees above where it currently points. Take one second to do it.
+
+ * {{{joints = ['l_shoulder_lift_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint']}}}
+   {{{   values = [-70, -90, -70]}}}
+   {{{  pr2.moveArmJoint(joints, values, duration=2.0, wait=False)}}}
+
+== Advanced Facilities ==
+
+Sometimes it is necessary that a script is notified when some event occurs. For example, a separate program may be using the robot's camera to find human faces in its surroundings. The script is to take some action, like wave its arm, whenever a face is found. How can the face finding program 'talk' to the script.
+
+The answer is `robot_script`'s `EventSimulator` class. This facility can be used to debug a script by creating events, and delivering them to the script at specified times. Or the facility can be combined with the actual event-producing program. This combination is accomplished by an expert user, who will subclass `EventSimulator`. The code contains instructions.
+
+=== Receiving Events from an EventSimulator ===
+
+The script may receive event notifications by one of two means. The event simulator can call one of the script functions when an event occurs. That function then implements the robot reaction to the event. This mechnism works well when the reaction to the events are of short duration. 
+
+When events take longer to handle, or when many events arrive in bursts, it is better to use the second event delivery channel: a queue. Every event simulator provides a queue. When the simulator calls the script's callback function, that function may return any information that might be needed when the event is eventually handled by other parts of the script. For example, the callback function might record the time when the event occurred. The simulator will place the renturned value into its queue, where the script may pick it up at any time. If many events occur in quick succession, they are all added to the queue.
+
+Python queues allow a script to pause until an event appears in the queue. Here is the logic of a silly example in which the camera captures a piece of text on a nearby wall, a direction sign, maybe. The simulator delivers the text to a script, which prints out the words in all upper case. In the first delivery method, the callback function immediately prints out the upper-cased text. Using the second method, the callback function performs the case conversion, and returns the result to the simulator. The simulator places the text in its out queue. When the script services the queue, it finds the word, and prints it. Here is the code, which assumes the existence of the fictitious WordFinder. We will do a runnable example in a moment.
+
+{{{
+def printWord(word):
+    print(word.upper())
+    
+WordFinder().start(printWord)   # WordFinder is a subclass of EventSimulator
+while (True):
+   time.sleep(1);
+}}}
+The above code defines a callback function, which prints the word it receives. Then the script enters a sleep loop. Whenever the independently running WordFinder discovers a word, the script's printWord() function is called.
+
+Here is the same example using the second event delivery method:
+{{{
+def printWord(word):
+    return word.upper()
+
+myWordFinder = WordFinder()  # WordFinder is a subclass of EventSimulator
+myWordFinder.start(printWord);
+eventQueue = myWordFinder.getEventQueue()
+while (True):
+    try:
+        event = eventQueue.get(block=True, timeout=4.0);
+    except Empty:
+        print("Queue empty for more than 4 seconds. Quitting.")
+        sys.exit();
+    print("From the event queue: " + event);
+}}}
+The code above has the callback method return the upper-cased word. The script then creates the WordFinder instance, and starts it, passing the callback function. The `get()` method on the Queue instance hangs until a word is available.
+
+=== Scheduling EventSimulator Events ===
+ 
+Say you don't have a fancy word or face finder. Or you will have one in the future, but want to debug the robot reactions to the discovery events. You can create a very simple schedule that the EventSimulator will work through. A schedule is an OrderedDict, a Python data structure that is just like a Python dictionary, but remembers the order in which items were added. Let's simulate the word finder. Here is the code:
+{{{
+from event_simulators.event_simulator import EventSimulator
+from Queue import Empty
+from collections import OrderedDict
+import sys
+import time
+
+schedule = OrderedDict()
+schedule[2.0] = 'This'
+schedule[5.0] = 'is'
+schedule[6.0] = 'a'
+schedule[7.2] = 'test'
+
+def printWord(word):
+    print(word.upper())
+    
+EventSimulator().start(schedule, printWord)
+while (True):
+   time.sleep(1);
+}}}
+The schedule's keys are floating point numbers that indicate the number of seconds after the script's start when the respective event is to be triggered. When the event is triggered, the EventSimulator will invoke the callback function with the value of the schedule entry. For instance, at 2 seconds after the script starts, the EventSimulator will call `printWord('This')`. At 5 seconds after the script start, the call `printWord('is')` will be made, and so on. 
+The keys in the schedule must be numbers in seconds. But the corresponding values may be any Python datastructure. Whatever is there will be the parameter to the `printWord()` call. 
+
+Here are the methods on the `EventSimulator` class:
+
+{{{start(schedule, callbackFunction, repeat=False)}}}
+   The `repeat` parameter allows a script to specify that the EventSimulator is to run through the schedule over and over again.
+{{{getEventQueue()}}}
+   Return the EventSimulator's event queue. 
+{{{stop()}}}
+   Stop the EventSimulator.
+
+Note to expert developers: The base class `EventSimulator` inherits from `threading.Thread`. Its `run()` method performs the schedule handling described above. A true event source, like the face finder, should subclass `EventSimulator` and override `start()`, and possibly `run()`.
+
+
+## CategoryPackage
+## CategoryPackageROSPKG
