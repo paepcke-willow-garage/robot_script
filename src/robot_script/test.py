@@ -14,10 +14,10 @@ BOTH  = pr2.BOTH
 #else:
 #    pr2.setTorso(0)
 
-if aboutEq('head_tilt_joint', 30):
-    pr2.lookAt(-100, -20 , 5, wait=False)
-else:
-    pr2.lookAt(+100, +30 , 5, wait=False)
+#if aboutEq('head_tilt_joint', 30):
+#    pr2.lookAt(-100, -20 , 5, wait=False)
+#else:
+#    pr2.lookAt(+100, +30 , 5, wait=False)
 
 #if aboutEq('head_tilt_joint', 30):
 #    #pr2.tiltHead(-20,5, wait=True)
@@ -32,6 +32,8 @@ else:
 #for i in range(40):
 #    print str(pr2.getSensorReading('head_tilt_joint'))
 
-    
+#pr2.moveBase(rotation=10)    
+pr2.moveBase(rotation=90)    
+#pr2.moveBase(rotation=-90)    
 
 

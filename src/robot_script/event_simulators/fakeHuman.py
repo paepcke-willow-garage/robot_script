@@ -7,6 +7,7 @@ roslib.load_manifest('visualization_msgs')
 
 # Generic libraries
 import sys,os,time
+import numpy
 from math import *
 from random import randint
 from collections import OrderedDict;
@@ -21,8 +22,39 @@ from visualization_msgs.msg import *
 # Superclass:
 from event_simulator import EventSimulator;
 
+# Enum:
+class MotionDirection:
+    AWAY_FROM_ROBOT = 0
+    TOWARDS_ROBOT = 1
+
+
 class FakeHuman(EventSimulator):
-    "Simulating the perceptual data we would get from a human"
+    '''
+    Simulating the perceptual data we would get from a human.
+    The human is symbolized by a red ball at roughly human size
+    relative to the robot in the view.
+    
+    Given a schedule of poses for the human, instances of
+    this class move the human through the scheduled timed poses. 
+    A schedule looks like this:
+    
+		motionSchedule = OrderedDict();
+		
+		motionSchedule[3]  = {'target': [2,0], 'speed': [0.5,0.0]}; 
+		motionSchedule[6]  = {'target': [3,0], 'speed': [0.5,0.0]}; 
+		motionSchedule[9]  = {'target': [4,0], 'speed': [0.5,0.0]};
+    
+    Here the motionSchedule keys (3,6, and 9) are seconds from program start.
+    the 'target' numbers are meters of distance from the robot, and the 
+    two speed components are meters/sec in the x and y direction, respectively.
+    
+    When the scheduled pose sequence is completed, it starts over.
+    Start the sequence with a call to a FakeHuman's start() method, passing
+    it a schedule. Stop the motions via a call to the stop() method.
+    
+    '''
+    
+    
     
     def __init__(self):
         self.tfBroadcaster = TransformBroadcaster()
@@ -75,11 +107,24 @@ class FakeHuman(EventSimulator):
     	return diff, True
 	 
     def moveTowardsTarget(self, speed):
+        '''
+        Called from update(). Moves the rviz representation of the human towards 
+        a target position.
+        @param speed: motion speed
+        @type speed: float
+        @return: whether fake human moved closer to the robot, or away from it
+        @rtype: MotionDirection
+        '''
+        initialDistanceFromRobot = self.getPlanarDistance(self.humanPose);
     	xDiff, xReached = self.getDiff(self.target[0], self.humanPose.position.x, speed[0])
     	yDiff, yReached = self.getDiff(self.target[1], self.humanPose.position.y, speed[1])
     	self.humanPose.position.x += xDiff
     	self.humanPose.position.y += yDiff
-    	return (xReached and yReached)
+        newDistanceFromRobot = self.getPlanarDistance(self.humanPose)
+        if (newDistanceFromRobot - initialDistanceFromRobot) > 0:
+            return MotionDirection.TOWARDS_ROBOT
+        else:
+            return MotionDirection.AWAY_FROM_ROBOT
 
     def update(self, dummy):
         '''
@@ -128,20 +173,20 @@ class FakeHuman(EventSimulator):
             return;
         
         self.target = keyframeTarget;
-        # Move a little bit:
-        humanReachedDestination = self.moveTowardsTarget(keyframeSpeed);
+        targetPose  = Pose(Point(keyframeTarget[0],keyframeTarget[1],0), Quaternion(0,0,0,0))
+        self.targetDistance = self.getPlanarDistance(targetPose);
+        #******************** 
+        #print(str(timePassed) + "s. Target: " + str(self.targetDistance) + "m. CurrDist: " + str(self.getPlanarDistance(self.humanPose)));
+        #********************         
+        # Move the human a little bit (we ignore the move direction):
+        motionDirection = self.moveTowardsTarget(keyframeSpeed);
         self.visualizeFakeHuman();
         # If the human reached a keyframe destination,
         # return the new xy to the simulator, which will put it
         # into its out queue: 
-        # ****** This never goes true. Need planar distance computation.
-        # ****** method getPlanarDistance is already in this file, copied
-        # ****** from fakeRobot.py in proximity.
-        if humanReachedDestination:
-            return keyframeTarget;
-        else:
-            return None;
-
+        newDistance = self.getPlanarDistance(self.humanPose);
+        return newDistance;
+        
     def visualizeFakeHuman(self):
         # Visualize the fake human:
         if (self.humanPose != None):
@@ -151,23 +196,27 @@ class FakeHuman(EventSimulator):
                     scale=Vector3(0.3,0.3,0.3), header=Header(frame_id='odom_combined'),
                     color=ColorRGBA(1.0, 0.0, 0.0, 0.8))
         self.markerPublisher.publish(m)
-            
+      
+def sigintHandler(signum, frame):
+    human.stop();      
 
 if __name__ == "__main__":
 
+# ----------------------------------------  For Testing Only. Scripts Call the start() Method ------------------
     human = FakeHuman()
     motionSchedule = OrderedDict();
-    motionSchedule[2]  = None;
-    motionSchedule[5]  = {'target': [2,-1], 'speed': [0.1,0.03]}; 
-    motionSchedule[10] = None;
-    motionSchedule[12] = {'target': [4,-2], 'speed': [.1,.055]}; 
-    motionSchedule[16] = None;
-    motionSchedule[20] = {'target': [0.6,.5], 'speed': [.08,.1]};
-    motionSchedule[27] = None;    
+#    motionSchedule[2]  = None;
+#    motionSchedule[5]  = {'target': [2,-1], 'speed': [0.1,0.03]}; 
+#    motionSchedule[10] = None;
+#    motionSchedule[12] = {'target': [4,-2], 'speed': [.1,.055]}; 
+#    motionSchedule[16] = None;
+#    motionSchedule[20] = {'target': [0.6,.5], 'speed': [.08,.1]};
+#    motionSchedule[27] = None;    
     
-    #rospy.spin()
-#    while(not rospy.is_shutdown()):
-#        human.update()
+    motionSchedule[3]  = {'target': [2,0], 'speed': [0.1,0.0]}; 
+    motionSchedule[6]  = {'target': [3,0], 'speed': [0.1,0.0]}; 
+    motionSchedule[9]  = {'target': [4,0], 'speed': [0.1,0.0]};
+    
     human.start(motionSchedule);
     time.sleep(0.1)
 

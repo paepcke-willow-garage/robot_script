@@ -90,6 +90,9 @@ EVEN MORE ADVANCED USE:
                 sys.exit();
             print event;
 
+     - See also file testFakeHuman.py for a particular event simulator.
+
+
 The many 'if' statements below just ensure that the robot will do something
 different each time you run this file.
 
