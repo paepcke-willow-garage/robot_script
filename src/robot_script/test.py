@@ -32,8 +32,9 @@ BOTH  = pr2.BOTH
 #for i in range(40):
 #    print str(pr2.getSensorReading('head_tilt_joint'))
 
-#pr2.moveBase(rotation=10)    
-pr2.moveBase(rotation=90)    
+#pr2.moveBase(rotation=10)
+pr2.moveBase(rotation=0)        
+#pr2.moveBase(rotation=90)
 #pr2.moveBase(rotation=-90)    
 
 

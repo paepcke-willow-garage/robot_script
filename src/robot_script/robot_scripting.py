@@ -38,6 +38,7 @@ from actionlib import *
 from actionlib_msgs.msg import *
 from pr2_controllers_msgs.msg import *
 from sensor_msgs.msg import JointState 
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 import pr2_simple_interface
 
@@ -48,6 +49,7 @@ class Units:
 class Tolerances:
     ANGULAR  = 9;     # +/- degrees
     DISTANCE = 0.02   # +/- meters
+    BASE     = 0.2    # +/- meters (Base less accurate via odometry)
 
 class FullPose(object):
     '''
@@ -173,7 +175,10 @@ class PR2RobotScript(RobotScript):
         '''
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
-        reading = PR2RobotScript.sensor_observer.getSensorReading(sensorName); 
+        reading = PR2RobotScript.sensor_observer.getSensorReading(sensorName);
+        if sensorName == "base":
+            reading.w =  RobotScript.rad2degree(reading.w)
+            return reading
         if PR2RobotScript.pr2_joint_units[sensorName] == Units.ANGULAR:
            return RobotScript.rad2degree(reading)
         else:
@@ -362,8 +367,11 @@ class PR2RobotScript(RobotScript):
         movement = Twist()
         movement.linear = fullPose.linear
         movement.angular = fullPose.angular
+        target = Quaternion(place[0], place[1], place[2], rotation)
         start_time = rospy.get_rostime()
-        while rospy.get_rostime() < start_time + rospy.Duration(duration):
+#        while (rospy.get_rostime() < start_time + rospy.Duration(duration)) and\
+#              (not aboutEq("base", target)):
+        while not aboutEq("base", target):
             PR2RobotScript.baseMovementPublisher.publish(movement)
         time.sleep(0.01)
         PR2RobotScript.baseMovementPublisher.publish(Twist())  # Stop
@@ -380,20 +388,28 @@ class PR2RobotScript(RobotScript):
             super(PR2RobotScript.PR2SensorObserver, self).__init__()
             self._latest_joint_state = None
             self._subscriber = None
+            self._odom_subscriber = None
             self._jointPositions = {}
             self._jointVelocities = {}
-        
+            self._base_xyzw = None
+
         def getSensorReading(self, sensorName):
             if len(self._jointPositions) == 0:
                 # _receive_joint_states wasn't called yet. Give it a chance
                 rospy.sleep(0.5);
                 if len(self._jointPositions) == 0:
                     raise RuntimeError("PR2SensorObserver not initialized, or no joint states being processed.");
+            if self._base_xyzw is None:
+                # _receive_odometry_states wasn't called yet. Give it a chance
+                rospy.sleep(0.5);
+                if self._base_xyzw is None:
+                    raise RuntimeError("PR2SensorObserver not initialized, or no robot base position states being processed.");
             try:
-                jointPos = self._jointPositions[sensorName];
+                if sensorName == "base":
+                    basePos = self._base_xyzw;
+                    return basePos;
                 
-                #print str(sensorName + ": " + str(jointPos))
-
+                jointPos = self._jointPositions[sensorName];
                 return jointPos
             except KeyError:
                 raise ValueError("Sensing for '%s' is not implemented. Maybe the sensor name is wrong?\nLegal names are:\n%s" % (sensorName,PR2RobotScript.jointsStr));
@@ -402,13 +418,19 @@ class PR2RobotScript(RobotScript):
             rospy.loginfo('PR2SensorObserver.start()')
             if self._subscriber is not None:
                 self._subscriber.unregister()
-            self._subscriber = rospy.Subscriber('/joint_states', JointState, self._receive_joint_states)
+            if self._odom_subscriber is not None:
+                self._odom_subscriber.unregister()
+            self._subscriber      = rospy.Subscriber('/joint_states', JointState, self._receive_joint_states)
+            self._odom_subscriber = rospy.Subscriber('/robot_pose_ekf/odom_combined', PoseWithCovarianceStamped, self._receive_odometry_states)
         
         def stop(self):
             rospy.loginfo('PR2SensorObserver.stop()')
             if self._subscriber is not None:
                 self._subscriber.unregister()
                 self._subscriber = None
+            if self._odom_subscriber is not None:
+                self._odom_subscriber.unregister()
+                self._odom_subscriber = None
         
         def _receive_joint_states(self, joint_state_msg):
             self._latest_joint_state = joint_state_msg
@@ -417,14 +439,40 @@ class PR2RobotScript(RobotScript):
                 self._jointVelocities[joint_state_msg.name[i]] = joint_state_msg.velocity[i]
             
             #rospy.loginfo("Joint state: " + str(self._latest_joint_state))
+        
+        def _receive_odometry_states(self, odom_msg):
+            #print(str(odom_msg))
+            self._base_xyzw = Quaternion(odom_msg.pose.pose.position.x,
+                                         odom_msg.pose.pose.position.y,
+                                         odom_msg.pose.pose.position.z,
+                                         odom_msg.pose.pose.orientation.w);
+            
 
 def aboutEq(sensorName, val):
     sensorVal = PR2RobotScript.getSensorReading(sensorName);
+    
+    if sensorName == "base":
+        # val is a Quaternion test all four values:
+        if not doComparison(sensorVal.x, val.x, Tolerances.BASE) or\
+           not doComparison(sensorVal.y, val.y, Tolerances.BASE) or\
+           not doComparison(sensorVal.z, val.z, Tolerances.BASE) or\
+           not doComparison(sensorVal.w, val.w, Tolerances.BASE):
+            return False
+        else:
+            return True
+
+    # A joint angle: 
+    
     if PR2RobotScript.pr2_joint_units[sensorName] == Units.ANGULAR:
         tolerance = Tolerances.ANGULAR; # degrees
     else:
         tolerance = Tolerances.DISTANCE # meters
-    if (abs(sensorVal - val) <= tolerance):
+    
+    
+    return doComparison(sensorVal, val, tolerance)
+        
+def doComparison(sensorVal, targetVal, tolerance):        
+    if (abs(sensorVal - targetVal) <= tolerance):
         return True;
     else:
         return False;
