@@ -55,7 +55,7 @@ class Units:
     DISTANCE = 1;
 
 class Tolerances:
-    ANGULAR  = 9;     # +/- degrees
+    ANGULAR  = 2;     # +/- degrees
     DISTANCE = 0.02   # +/- meters
     BASE     = 0.2    # +/- meters (Base less accurate via odometry)
 
@@ -106,7 +106,8 @@ class PR2RobotScript(RobotScript):
     
     sensor_observer = None
     initialized = False
-    baseMotionMoveThread = None
+    
+    transformListener = None
     
     LEFT  = pr2_simple_interface.LEFT
     RIGHT = pr2_simple_interface.RIGHT
@@ -142,6 +143,13 @@ class PR2RobotScript(RobotScript):
         pr2_simple_interface.start(d=True)
         PR2RobotScript.sensor_observer = PR2RobotScript.PR2SensorObserver()
         PR2RobotScript.sensor_observer.start()
+        PR2RobotScript.transformListener = tf.TransformListener()
+        try:
+            pass
+            #*****rospy.wait_for_service("spawn", timeout=2.0)
+        except:
+            raise RuntimeError("Transform listener does not appear to be running.");
+        
         PR2RobotScript.initialized = True;
         
         # Build a string with all legal joints/sensors, four to a line
@@ -482,7 +490,47 @@ class RobotBaseMotionThread(threading.Thread):
         
     def run(self):
         RobotBaseMotionThread.oneThreadRunning = self;
-        while self.keepRunning:
+        rate = rospy.Rate(UPDATE_RATE);
+        targetRotRad = PR2RobotScript.degree2rad(self.targetQuaternion.w)
+        rotToleranceRad = PR2RobotScript.degree2rad(Tolerances.ANGULAR)
+        rotTraveled  = 0.0
+        distTraveled = 0.0
+        # Get initial positions: translation as Vector3 (x,y,z), and rot as quaternion:
+        while self.keepRunning and not rospy.is_shutdown():
+            try:
+                (initialTrans, initialRot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
+                prevRot = initialRot
+                # Need to detect later if amount traveled slips past the target,
+                # because of bad sampling luck:
+                if targetRotRad > initialRot[3]:
+                    targetGreater = True
+                else:
+                     targetGreater = False
+                break;
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                continue
+        while self.keepRunning and not rospy.is_shutdown():
+            try:
+                (trans,rot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                continue
+            
+            #*******************
+            #print('angular: ' + str(angular) + ". linear: " + str(linear))
+            #print('angular: ' + str(rot[3]))
+            #print("trans: " + str(trans) + ". rot: " + str(rot))
+            rotTraveled += abs(rot[3] - initialRot[3])
+            if (abs(targetRotRad - rotTraveled) <= rotToleranceRad) or\
+                (targetGreater and targetRotRad <= rotTraveled) or\
+                (not targetGreater and targetRotRad > rotTraveled):
+                self.stop();
+                return
+            #*******************
+
+#***            rate.sleep()
+#***            continue;           
+            
+            #----------------------------
             # Get current location and rotation of the robot:
             if aboutEq("base", self.targetQuaternion):
                 # Reached destination; stop robot:
@@ -492,7 +540,7 @@ class RobotBaseMotionThread(threading.Thread):
             baseQuaternion = PR2RobotScript.getSensorReading('base');
             #********************
             #print('deg: %f.10. rad: %f.5' % (baseQuaternion.w, PR2RobotScript.degree2rad(baseQuaternion.w)))
-            print('deg: ' + str(baseQuaternion.w) + ". rad: " + str(PR2RobotScript.degree2rad(baseQuaternion.w)))
+            #print('deg: ' + str(baseQuaternion.w) + ". rad: " + str(PR2RobotScript.degree2rad(baseQuaternion.w)))
             #********************
             newX = self.targetQuaternion.x if doComparison(baseQuaternion.x, self.targetQuaternion.x, Tolerances.DISTANCE) else self.targetQuaternion.x - baseQuaternion.x; 
             newY = self.targetQuaternion.y if doComparison(baseQuaternion.y, self.targetQuaternion.y, Tolerances.DISTANCE) else self.targetQuaternion.y - baseQuaternion.y;
