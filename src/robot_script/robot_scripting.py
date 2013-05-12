@@ -48,8 +48,7 @@ from geometry_msgs.msg import Twist
 import pr2_simple_interface
 
 # Rate at which base motion gets refreshed:
-#*****UPDATE_RATE = 0.1; # seconds
-UPDATE_RATE = 1.0; # seconds
+UPDATE_RATE = 0.1; # seconds
 
 class Units:
     ANGULAR  = 0;
@@ -143,7 +142,6 @@ class PR2RobotScript(RobotScript):
         pr2_simple_interface.start(d=True)
         PR2RobotScript.sensor_observer = PR2RobotScript.PR2SensorObserver()
         PR2RobotScript.sensor_observer.start()
-        PR2RobotScript.baseMotionMoveThread = RobotBaseMotionThread();
         PR2RobotScript.initialized = True;
         
         # Build a string with all legal joints/sensors, four to a line
@@ -374,8 +372,8 @@ class PR2RobotScript(RobotScript):
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
   
-        PR2RobotScript.baseMotionMoveThread.stop();
-        PR2RobotScript.baseMotionMoveThread.start(Quaternion(place[0], place[1], place[2], rotation), duration);
+        motionThread = RobotBaseMotionThread();
+        motionThread.start(Quaternion(place[0], place[1], place[2], rotation), duration);
         return;
         #*****      
         fullPose = FullPose(place, rotation)
@@ -475,12 +473,11 @@ class RobotBaseMotionThread(threading.Thread):
         if RobotBaseMotionThread.oneThreadRunning is not None:
             #raise RuntimeError("Must stop robot motion thread before starting a new one: Call self.robotMotionThread.stop()");
             RobotBaseMotionThread.oneThreadRunning.stop();
-            
-        super(RobotBaseMotionThread, self).start();
-        
+                    
         self.targetQuaternion = targetQuaternion;
         self.motionDuration = motionDuration
         self.keepRunning = True;
+        super(RobotBaseMotionThread, self).start();
         
         
     def run(self):
@@ -493,13 +490,26 @@ class RobotBaseMotionThread(threading.Thread):
                 self.stop();
                 return;
             baseQuaternion = PR2RobotScript.getSensorReading('base');
-            placeDiff = Vector3(self.targetQuaternion.x - baseQuaternion.x,
-                                self.targetQuaternion.y - baseQuaternion.y,
-                                self.targetQuaternion.z - baseQuaternion.z);
-            rotDiff = self.targetQuaternion.w - baseQuaternion.w;
+            #********************
+            #print('deg: %f.10. rad: %f.5' % (baseQuaternion.w, PR2RobotScript.degree2rad(baseQuaternion.w)))
+            print('deg: ' + str(baseQuaternion.w) + ". rad: " + str(PR2RobotScript.degree2rad(baseQuaternion.w)))
+            #********************
+            newX = self.targetQuaternion.x if doComparison(baseQuaternion.x, self.targetQuaternion.x, Tolerances.DISTANCE) else self.targetQuaternion.x - baseQuaternion.x; 
+            newY = self.targetQuaternion.y if doComparison(baseQuaternion.y, self.targetQuaternion.y, Tolerances.DISTANCE) else self.targetQuaternion.y - baseQuaternion.y;
+            newZ = 0.0;
+            newW = self.targetQuaternion.w if doComparison(baseQuaternion.w, self.targetQuaternion.w, Tolerances.ANGULAR) else self.targetQuaternion.w - baseQuaternion.w;
+            
+#***            placeDiff = Vector3(self.targetQuaternion.x - baseQuaternion.x,
+#***                                self.targetQuaternion.y - baseQuaternion.y,
+#***                                self.targetQuaternion.z - baseQuaternion.z);
+#***            rotDiff = self.targetQuaternion.w - baseQuaternion.w;
             twistMsg  = Twist();
-            twistMsg.linear = placeDiff;
-            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(rotDiff));
+#***            twistMsg.linear = placeDiff;
+#***            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(rotDiff));
+#***            twistMsg.linear = Vector3(newX, newY, newZ);
+#***            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(newW));
+            twistMsg.linear  = Vector3(self.targetQuaternion.x, self.targetQuaternion.y, self.targetQuaternion.z);  
+            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(self.targetQuaternion.w, ));
             PR2RobotScript.baseMovementPublisher.publish(twistMsg);
             time.sleep(UPDATE_RATE);
         
