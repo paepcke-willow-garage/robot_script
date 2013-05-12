@@ -25,12 +25,14 @@ import sys,os,time
 import numpy, math
 from functools import partial
 import types
+import copy
+from threading import Lock
 
 # ROS libraries
 import rospy
 import tf
 from tf import TransformListener, TransformBroadcaster
-from geometry_msgs.msg import *
+#from geometry_msgs.msg import *
 from std_msgs.msg import Header,ColorRGBA
 from visualization_msgs.msg import *
 from pr2_controllers_msgs.msg import PointHeadAction, PointHeadGoal
@@ -39,8 +41,15 @@ from actionlib_msgs.msg import *
 from pr2_controllers_msgs.msg import *
 from sensor_msgs.msg import JointState 
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Twist
 
 import pr2_simple_interface
+
+# Rate at which base motion gets refreshed:
+#*****UPDATE_RATE = 0.1; # seconds
+UPDATE_RATE = 1.0; # seconds
 
 class Units:
     ANGULAR  = 0;
@@ -98,6 +107,7 @@ class PR2RobotScript(RobotScript):
     
     sensor_observer = None
     initialized = False
+    baseMotionMoveThread = None
     
     LEFT  = pr2_simple_interface.LEFT
     RIGHT = pr2_simple_interface.RIGHT
@@ -133,6 +143,7 @@ class PR2RobotScript(RobotScript):
         pr2_simple_interface.start(d=True)
         PR2RobotScript.sensor_observer = PR2RobotScript.PR2SensorObserver()
         PR2RobotScript.sensor_observer.start()
+        PR2RobotScript.baseMotionMoveThread = RobotBaseMotionThread();
         PR2RobotScript.initialized = True;
         
         # Build a string with all legal joints/sensors, four to a line
@@ -362,15 +373,19 @@ class PR2RobotScript(RobotScript):
         '''
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
-        
+  
+        PR2RobotScript.baseMotionMoveThread.stop();
+        PR2RobotScript.baseMotionMoveThread.start(Quaternion(place[0], place[1], place[2], rotation), duration);
+        return;
+        #*****      
         fullPose = FullPose(place, rotation)
         movement = Twist()
         movement.linear = fullPose.linear
         movement.angular = fullPose.angular
         target = Quaternion(place[0], place[1], place[2], rotation)
         start_time = rospy.get_rostime()
-#        while (rospy.get_rostime() < start_time + rospy.Duration(duration)) and\
-#              (not aboutEq("base", target)):
+##        while (rospy.get_rostime() < start_time + rospy.Duration(duration)) and\
+##              (not aboutEq("base", target)):
         while not aboutEq("base", target):
             PR2RobotScript.baseMovementPublisher.publish(movement)
         time.sleep(0.01)
@@ -392,6 +407,8 @@ class PR2RobotScript(RobotScript):
             self._jointPositions = {}
             self._jointVelocities = {}
             self._base_xyzw = None
+            self.basePositionVarLock   = Lock();
+            self.jointPositionsVarLock = Lock();
 
         def getSensorReading(self, sensorName):
             if len(self._jointPositions) == 0:
@@ -406,11 +423,13 @@ class PR2RobotScript(RobotScript):
                     raise RuntimeError("PR2SensorObserver not initialized, or no robot base position states being processed.");
             try:
                 if sensorName == "base":
-                    basePos = self._base_xyzw;
-                    return basePos;
-                
-                jointPos = self._jointPositions[sensorName];
-                return jointPos
+                    with self.basePositionVarLock:
+                        basePosCopy = copy.copy(self._base_xyzw);
+                        return basePosCopy;
+                else:
+                    with self.jointPositionsVarLock:
+                        jointPosCopy = copy.copy(self._jointPositions[sensorName]);
+                        return jointPosCopy;
             except KeyError:
                 raise ValueError("Sensing for '%s' is not implemented. Maybe the sensor name is wrong?\nLegal names are:\n%s" % (sensorName,PR2RobotScript.jointsStr));
         
@@ -434,19 +453,60 @@ class PR2RobotScript(RobotScript):
         
         def _receive_joint_states(self, joint_state_msg):
             self._latest_joint_state = joint_state_msg
-            for i in range(len(joint_state_msg.name)):
-                self._jointPositions[joint_state_msg.name[i]] = joint_state_msg.position[i]
-                self._jointVelocities[joint_state_msg.name[i]] = joint_state_msg.velocity[i]
-            
-            #rospy.loginfo("Joint state: " + str(self._latest_joint_state))
-        
-        def _receive_odometry_states(self, odom_msg):
+            with self.jointPositionsVarLock:
+                for i in range(len(joint_state_msg.name)):
+                    self._jointPositions[joint_state_msg.name[i]] = joint_state_msg.position[i]
+                    self._jointVelocities[joint_state_msg.name[i]] = joint_state_msg.velocity[i]
+                    
+        def _receive_odometry_states(self, the_odom_msg):
             #print(str(odom_msg))
-            self._base_xyzw = Quaternion(odom_msg.pose.pose.position.x,
-                                         odom_msg.pose.pose.position.y,
-                                         odom_msg.pose.pose.position.z,
-                                         odom_msg.pose.pose.orientation.w);
+            odom_msg = the_odom_msg;
+            with self.basePositionVarLock:
+                self._base_xyzw = Quaternion(odom_msg.pose.pose.position.x,
+                                             odom_msg.pose.pose.position.y,
+                                             odom_msg.pose.pose.position.z,
+                                             odom_msg.pose.pose.orientation.w);
             
+class RobotBaseMotionThread(threading.Thread):
+    
+    oneThreadRunning = None;
+    
+    def start(self, targetQuaternion, motionDuration):
+        if RobotBaseMotionThread.oneThreadRunning is not None:
+            #raise RuntimeError("Must stop robot motion thread before starting a new one: Call self.robotMotionThread.stop()");
+            RobotBaseMotionThread.oneThreadRunning.stop();
+            
+        super(RobotBaseMotionThread, self).start();
+        
+        self.targetQuaternion = targetQuaternion;
+        self.motionDuration = motionDuration
+        self.keepRunning = True;
+        
+        
+    def run(self):
+        RobotBaseMotionThread.oneThreadRunning = self;
+        while self.keepRunning:
+            # Get current location and rotation of the robot:
+            if aboutEq("base", self.targetQuaternion):
+                # Reached destination; stop robot:
+                PR2RobotScript.baseMovementPublisher.publish(Twist())
+                self.stop();
+                return;
+            baseQuaternion = PR2RobotScript.getSensorReading('base');
+            placeDiff = Vector3(self.targetQuaternion.x - baseQuaternion.x,
+                                self.targetQuaternion.y - baseQuaternion.y,
+                                self.targetQuaternion.z - baseQuaternion.z);
+            rotDiff = self.targetQuaternion.w - baseQuaternion.w;
+            twistMsg  = Twist();
+            twistMsg.linear = placeDiff;
+            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(rotDiff));
+            PR2RobotScript.baseMovementPublisher.publish(twistMsg);
+            time.sleep(UPDATE_RATE);
+        
+    def stop(self):
+        self.keepRunning = False;
+        RobotBaseMotionThread.oneThreadRunning = None;
+        
 
 def aboutEq(sensorName, val):
     sensorVal = PR2RobotScript.getSensorReading(sensorName);
