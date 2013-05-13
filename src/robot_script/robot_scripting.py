@@ -51,17 +51,19 @@ from geometry_msgs.msg import Twist
 import pr2_simple_interface
 
 # Rate at which base motion gets refreshed:
-UPDATE_RATE = 0.1; # seconds
+#UPDATE_RATE = 0.1; # seconds
 #UPDATE_RATE = 0.05; # seconds
+UPDATE_RATE = 0.01; # seconds
 
 class Units:
     ANGULAR  = 0;
     DISTANCE = 1;
 
 class Tolerances:
-    ANGULAR  = 10;     # +/- degrees
-    DISTANCE = 0.02   # +/- meters
-    BASE     = 0.2    # +/- meters (Base less accurate via odometry)
+    ANGULAR       = 10;    # +/- degrees
+    DISTANCE      = 0.02   # +/- meters
+    BASE_DISTANCE = 0.2    # +/- meters (Base less accurate via odometry)
+    BASE_ANGLE    = 2      # +/- degrees
 
 class FullPose(object):
     '''
@@ -529,7 +531,7 @@ class RobotBaseMotionThread(threading.Thread):
         targetX = self.targetQuaternion.x;
         targetY = self.targetQuaternion.y;        
         targetRotRad = PR2RobotScript.degree2rad(self.targetQuaternion.w)
-        rotToleranceRad = PR2RobotScript.degree2rad(Tolerances.ANGULAR)
+        rotToleranceRad = PR2RobotScript.degree2rad(Tolerances.BASE_ANGLE)
         rotTraveled  = 0.0
         xTraveled = 0.0
         yTraveled = 0.0
@@ -538,7 +540,8 @@ class RobotBaseMotionThread(threading.Thread):
         yGoalReached   = False
         twistMsg  = Twist();
         twistMsg.linear  = Vector3(self.targetQuaternion.x, self.targetQuaternion.y, self.targetQuaternion.z);  
-        twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(self.targetQuaternion.w));
+        #*****twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(self.targetQuaternion.w));
+        twistMsg.angular = Vector3(0.0,0.0,5.0);
         # Get initial positions: translation as Vector3 (x,y,z), and rot as quaternion:
         while self.keepRunning and not rospy.is_shutdown():
             try:
@@ -641,10 +644,10 @@ def aboutEq(sensorName, val):
     
     if sensorName == "base":
         # val is a Quaternion test all four values:
-        if not doComparison(sensorVal.x, val.x, Tolerances.BASE) or\
-           not doComparison(sensorVal.y, val.y, Tolerances.BASE) or\
-           not doComparison(sensorVal.z, val.z, Tolerances.BASE) or\
-           not doComparison(sensorVal.w, val.w, Tolerances.BASE):
+        if not doComparison(sensorVal.x, val.x, Tolerances.BASE_DISTANCE) or\
+           not doComparison(sensorVal.y, val.y, Tolerances.BASE_DISTANCE) or\
+           not doComparison(sensorVal.z, val.z, Tolerances.BASE_DISTANCE) or\
+           not doComparison(sensorVal.w, val.w, Tolerances.BASE_ANGLE):
             return False
         else:
             return True
