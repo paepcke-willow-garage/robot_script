@@ -9,10 +9,13 @@ pr2_simple_interface underneath. Adds:
    - Base motion
    - Event injection into scripts
    
+see 
+   
 @author: Andreas Paepcke, based on Austin Hendrix' pr2_simple_interface, and Maya Cakmak's fake_robot.py
 '''
 
 import roslib
+from mercurial.hgweb.webcommands import static
 roslib.load_manifest('geometry_msgs')
 roslib.load_manifest('tf')
 roslib.load_manifest('rospy')
@@ -82,6 +85,12 @@ class RobotScript(object):
     
     # Used for waiting:
     done_condition = threading.Condition();
+    
+    # Flag that causes all robot motion commands to do nothing when
+    # called. This is useful for faking interrupts for long running 
+    # robot_script functions: They run through all commends, but 
+    # do nothing, and finish quickly. Real hack!!!
+    gearsEngaged = True;
     
     # ----------------  Private Methods and Classes   -----------------------
 
@@ -207,6 +216,9 @@ class PR2RobotScript(RobotScript):
     @staticmethod
     def waitFor(jointNames, settings, safetyTimeout=rospy.Duration(30.0)):
 
+        if not PR2RobotScript.gearsEngaged:
+            return;
+
         if not isinstance(jointNames, types.ListType):
             jointNames = [jointNames]
         if not isinstance(settings, types.ListType):
@@ -241,6 +253,9 @@ class PR2RobotScript(RobotScript):
 
     @staticmethod
     def tiltHead(newTilt, duration=1.0, wait=True):
+
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         # If currently moving head, must wait for that done,
@@ -254,6 +269,8 @@ class PR2RobotScript(RobotScript):
         
     @staticmethod
     def panHead(newPan, duration=1.0, wait=True):
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         # If currently moving head, must wait for that done,
@@ -267,6 +284,8 @@ class PR2RobotScript(RobotScript):
      
     @staticmethod
     def lookAt(pan, tilt, duration=1.0, wait=True):
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         PR2RobotScript.head.look(pan, tilt, dur=duration)
@@ -277,6 +296,8 @@ class PR2RobotScript(RobotScript):
         
     @staticmethod
     def rotateHead(newVal, duration=1.0, wait=True):
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         # If currently moving head, must wait for that done,
@@ -290,6 +311,8 @@ class PR2RobotScript(RobotScript):
         
     @staticmethod        
     def openGripper(side):
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         PR2RobotScript.gripper.release(side)
@@ -300,6 +323,8 @@ class PR2RobotScript(RobotScript):
 
     @staticmethod
     def closeGripper(side):
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         PR2RobotScript.gripper.close(side)
@@ -310,6 +335,8 @@ class PR2RobotScript(RobotScript):
 
     @staticmethod
     def setTorso(height, duration=10.0, wait=True):
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
         PR2RobotScript.torso.set(height, dur=duration)
@@ -329,6 +356,8 @@ class PR2RobotScript(RobotScript):
         @param wait: whether to wait till motion is done before returning from method 
         @type wait: boolean
         '''
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
             
@@ -380,6 +409,8 @@ class PR2RobotScript(RobotScript):
         @param duration: duration of motion
         @type duration: float
         '''
+        if not PR2RobotScript.gearsEngaged:
+            return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
   
@@ -389,6 +420,19 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.base.wait_for();
         return;
 
+    @staticmethod
+    def pause(duration):
+        if not PR2RobotScript.gearsEngaged:
+            return;
+        rospy.timer.sleep(duration)
+
+    @staticmethod
+    def engageGears():
+        PR2RobotScript.gearsEngaged = True
+        
+    @staticmethod
+    def disengageGears():
+        PR2RobotScript.gearsEngaged = False
 
     # ----------------  Class Pr2SensorObserver   -----------------------        
         
