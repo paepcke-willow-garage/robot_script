@@ -49,13 +49,14 @@ import pr2_simple_interface
 
 # Rate at which base motion gets refreshed:
 UPDATE_RATE = 0.1; # seconds
+#UPDATE_RATE = 0.05; # seconds
 
 class Units:
     ANGULAR  = 0;
     DISTANCE = 1;
 
 class Tolerances:
-    ANGULAR  = 2;     # +/- degrees
+    ANGULAR  = 10;     # +/- degrees
     DISTANCE = 0.02   # +/- meters
     BASE     = 0.2    # +/- meters (Base less accurate via odometry)
 
@@ -103,6 +104,7 @@ class PR2RobotScript(RobotScript):
     robotArm = pr2_simple_interface.RobotArm()
     torso    = pr2_simple_interface.Torso()
     head     = pr2_simple_interface.Head()
+    base     = None;
     
     sensor_observer = None
     initialized = False
@@ -141,6 +143,7 @@ class PR2RobotScript(RobotScript):
 
         rospy.init_node('robot_scripts', anonymous=True)
         pr2_simple_interface.start(d=True)
+        PR2RobotScript.base = PR2Base()
         PR2RobotScript.sensor_observer = PR2RobotScript.PR2SensorObserver()
         PR2RobotScript.sensor_observer.start()
         PR2RobotScript.transformListener = tf.TransformListener()
@@ -367,7 +370,7 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.waitFor(jointNames, newAngles)
           
     @staticmethod
-    def moveBase(place=(0.0,0.0,0.0), rotation=0.0, duration=3.0):
+    def moveBase(place=(0.0,0.0,0.0), rotation=0.0, duration=3.0, wait=True):
         '''
         Move the robot base to a different position, turning its torso at the same time.
         @param place: a tuple with x,y,z coordinates of the destination
@@ -382,20 +385,9 @@ class PR2RobotScript(RobotScript):
   
         motionThread = RobotBaseMotionThread();
         motionThread.start(Quaternion(place[0], place[1], place[2], rotation), duration);
+        if wait:
+            PR2RobotScript.base.wait_for();
         return;
-        #*****      
-        fullPose = FullPose(place, rotation)
-        movement = Twist()
-        movement.linear = fullPose.linear
-        movement.angular = fullPose.angular
-        target = Quaternion(place[0], place[1], place[2], rotation)
-        start_time = rospy.get_rostime()
-##        while (rospy.get_rostime() < start_time + rospy.Duration(duration)) and\
-##              (not aboutEq("base", target)):
-        while not aboutEq("base", target):
-            PR2RobotScript.baseMovementPublisher.publish(movement)
-        time.sleep(0.01)
-        PR2RobotScript.baseMovementPublisher.publish(Twist())  # Stop
 
 
     # ----------------  Class Pr2SensorObserver   -----------------------        
@@ -490,81 +482,115 @@ class RobotBaseMotionThread(threading.Thread):
         
     def run(self):
         RobotBaseMotionThread.oneThreadRunning = self;
-        rate = rospy.Rate(UPDATE_RATE);
+        targetX = self.targetQuaternion.x;
+        targetY = self.targetQuaternion.y;        
         targetRotRad = PR2RobotScript.degree2rad(self.targetQuaternion.w)
         rotToleranceRad = PR2RobotScript.degree2rad(Tolerances.ANGULAR)
         rotTraveled  = 0.0
-        distTraveled = 0.0
+        xTraveled = 0.0
+        yTraveled = 0.0
+        rotGoalReached = False
+        xGoalReached   = False
+        yGoalReached   = False
+        twistMsg  = Twist();
+        twistMsg.linear  = Vector3(self.targetQuaternion.x, self.targetQuaternion.y, self.targetQuaternion.z);  
+        twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(self.targetQuaternion.w));
         # Get initial positions: translation as Vector3 (x,y,z), and rot as quaternion:
         while self.keepRunning and not rospy.is_shutdown():
             try:
                 (initialTrans, initialRot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
-                prevRot = initialRot
+                # 
+                prevRot   = initialRot[3]    # scalar rotation radians
+                prevX     = initialTrans[0]   # scalar meters
+                prevY     = initialTrans[1]   # scalar meters
                 # Need to detect later if amount traveled slips past the target,
                 # because of bad sampling luck:
+                
                 if targetRotRad > initialRot[3]:
-                    targetGreater = True
+                    rotTargetGreater = True
                 else:
-                     targetGreater = False
+                     rotTargetGreater = False
+
+                if targetX > initialTrans[0]:
+                    xTargetGreater = True
+                else:
+                    xTargetGreater = False
+                
+                if targetY > initialTrans[1]:
+                    yTargetGreater = True
+                else:
+                    yTargetGreater = False
+                
                 break;
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
+            
+        # Keep whipping the base controller till goals are reached:
         while self.keepRunning and not rospy.is_shutdown():
             try:
+                # Where is the robot after this iteration's sleep:
                 (trans,rot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
             
-            #*******************
-            #print('angular: ' + str(angular) + ". linear: " + str(linear))
-            #print('angular: ' + str(rot[3]))
-            #print("trans: " + str(trans) + ". rot: " + str(rot))
-            rotTraveled += abs(rot[3] - initialRot[3])
-            if (abs(targetRotRad - rotTraveled) <= rotToleranceRad) or\
-                (targetGreater and targetRotRad <= rotTraveled) or\
-                (not targetGreater and targetRotRad > rotTraveled):
-                self.stop();
-                return
-            #*******************
+            # Compute total rotation traveled:
+            if targetRotRad > 0:
+                rotTraveled += abs(rot[3] - prevRot)
+            else:
+                rotTraveled -= abs(rot[3] - prevRot)
 
-#***            rate.sleep()
-#***            continue;           
+            if targetX > 0:
+                xTraveled += abs(trans[0] - prevX)
+            else:
+                xTraveled -= abs(trans[0] - prevX)
+
+            if targetY > 0:
+                yTraveled += abs(trans[1] - prevY)
+            else:
+                yTraveled -= abs(trans[1] - prevY)
+
+                
+            # Is rotation goal reached?
+            if (abs(targetRotRad - rotTraveled) <= rotToleranceRad) or\
+                (rotTargetGreater and targetRotRad <= rotTraveled) or\
+                (not rotTargetGreater and targetRotRad > rotTraveled):
+                rotGoalReached = True;
+                twistMsg.angular = Vector3(0.0,0.0,0.0);
             
-            #----------------------------
-            # Get current location and rotation of the robot:
-            if aboutEq("base", self.targetQuaternion):
-                # Reached destination; stop robot:
-                PR2RobotScript.baseMovementPublisher.publish(Twist())
+            # Are x and y goals reached?
+            if (abs(targetX - xTraveled) <= Tolerances.DISTANCE) or\
+                (xTargetGreater and targetX <= xTraveled) or\
+                (not xTargetGreater and targetX > xTraveled):
+                xGoalReached = True;
+                twistMsg.linear = Vector3(0.0, twistMsg.linear.y, 0.0);
+            
+            if (abs(targetY - yTraveled) <= Tolerances.DISTANCE) or\
+                (yTargetGreater and targetY <= yTraveled) or\
+                (not yTargetGreater and targetY > yTraveled):
+                yGoalReached = True;
+                twistMsg.linear = Vector3(twistMsg.linear.x, 0.0, 0.0);
+            
+            if rotGoalReached and xGoalReached and rotGoalReached:
                 self.stop();
-                return;
-            baseQuaternion = PR2RobotScript.getSensorReading('base');
-            #********************
-            #print('deg: %f.10. rad: %f.5' % (baseQuaternion.w, PR2RobotScript.degree2rad(baseQuaternion.w)))
-            #print('deg: ' + str(baseQuaternion.w) + ". rad: " + str(PR2RobotScript.degree2rad(baseQuaternion.w)))
-            #********************
-            newX = self.targetQuaternion.x if doComparison(baseQuaternion.x, self.targetQuaternion.x, Tolerances.DISTANCE) else self.targetQuaternion.x - baseQuaternion.x; 
-            newY = self.targetQuaternion.y if doComparison(baseQuaternion.y, self.targetQuaternion.y, Tolerances.DISTANCE) else self.targetQuaternion.y - baseQuaternion.y;
-            newZ = 0.0;
-            newW = self.targetQuaternion.w if doComparison(baseQuaternion.w, self.targetQuaternion.w, Tolerances.ANGULAR) else self.targetQuaternion.w - baseQuaternion.w;
             
-#***            placeDiff = Vector3(self.targetQuaternion.x - baseQuaternion.x,
-#***                                self.targetQuaternion.y - baseQuaternion.y,
-#***                                self.targetQuaternion.z - baseQuaternion.z);
-#***            rotDiff = self.targetQuaternion.w - baseQuaternion.w;
-            twistMsg  = Twist();
-#***            twistMsg.linear = placeDiff;
-#***            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(rotDiff));
-#***            twistMsg.linear = Vector3(newX, newY, newZ);
-#***            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(newW));
-            twistMsg.linear  = Vector3(self.targetQuaternion.x, self.targetQuaternion.y, self.targetQuaternion.z);  
-            twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(self.targetQuaternion.w, ));
+            prevRot = rot[3]
+            prevX   = trans[0]
+            prevY   = trans[1]
+            
             PR2RobotScript.baseMovementPublisher.publish(twistMsg);
-            time.sleep(UPDATE_RATE);
+            time.sleep(UPDATE_RATE)
+            continue;           
         
     def stop(self):
         self.keepRunning = False;
         RobotBaseMotionThread.oneThreadRunning = None;
-        
+
+
+class PR2Base(object):
+    
+    def wait_for(self):
+        while RobotBaseMotionThread.oneThreadRunning is not None:
+            time.sleep(0.2);
 
 def aboutEq(sensorName, val):
     sensorVal = PR2RobotScript.getSensorReading(sensorName);
