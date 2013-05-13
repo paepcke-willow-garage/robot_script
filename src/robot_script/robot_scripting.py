@@ -47,13 +47,12 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Twist
+from tf.transformations import euler_from_quaternion
 
 import pr2_simple_interface
 
-# Rate at which base motion gets refreshed:
-#UPDATE_RATE = 0.1; # seconds
-#UPDATE_RATE = 0.05; # seconds
-UPDATE_RATE = 0.01; # seconds
+# Period at which base motion gets refreshed:
+UPDATE_RATE = 0.1; # seconds
 
 class Units:
     ANGULAR  = 0;
@@ -63,7 +62,7 @@ class Tolerances:
     ANGULAR       = 10;    # +/- degrees
     DISTANCE      = 0.02   # +/- meters
     BASE_DISTANCE = 0.2    # +/- meters (Base less accurate via odometry)
-    BASE_ANGLE    = 2      # +/- degrees
+    BASE_ANGLE    = 5     # +/- degrees
 
 class FullPose(object):
     '''
@@ -530,7 +529,7 @@ class RobotBaseMotionThread(threading.Thread):
         RobotBaseMotionThread.oneThreadRunning = self;
         targetX = self.targetQuaternion.x;
         targetY = self.targetQuaternion.y;        
-        targetRotRad = PR2RobotScript.degree2rad(self.targetQuaternion.w)
+        targetYawRad = PR2RobotScript.degree2rad(self.targetQuaternion.w)
         rotToleranceRad = PR2RobotScript.degree2rad(Tolerances.BASE_ANGLE)
         rotTraveled  = 0.0
         xTraveled = 0.0
@@ -540,8 +539,9 @@ class RobotBaseMotionThread(threading.Thread):
         yGoalReached   = False
         twistMsg  = Twist();
         twistMsg.linear  = Vector3(self.targetQuaternion.x, self.targetQuaternion.y, self.targetQuaternion.z);  
-        #*****twistMsg.angular = Vector3(0.0,0.0, PR2RobotScript.degree2rad(self.targetQuaternion.w));
-        twistMsg.angular = Vector3(0.0,0.0,5.0);
+        #*****twistMsg.angular = Vector3(0.0,0.0, rotSpeedRadPerSec));
+        twistMsg.angular  = Vector3(0.0,0.0,0.2);
+                
         # Get initial positions: translation as Vector3 (x,y,z), and rot as quaternion:
         while self.keepRunning and not rospy.is_shutdown():
             try:
@@ -553,7 +553,7 @@ class RobotBaseMotionThread(threading.Thread):
                 # Need to detect later if amount traveled slips past the target,
                 # because of bad sampling luck:
                 
-                if targetRotRad > initialRot[3]:
+                if targetYawRad > initialRot[3]:
                     rotTargetGreater = True
                 else:
                      rotTargetGreater = False
@@ -572,16 +572,31 @@ class RobotBaseMotionThread(threading.Thread):
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
             
-        # Keep whipping the base controller till goals are reached:
+        # Keep whipping the base controller till goals are reached 
+        # That whipping happens every UPDATE_RATE seconds. At ten times
+        # that rate, check location and angle of base to ensure that
+        # we don't miss reaching the target:
+        #valueCheckRate = UPDATE_RATE / 500.0
+        valueCheckRate = UPDATE_RATE
+        prevTwistSendTime = rospy.get_time()
         while self.keepRunning and not rospy.is_shutdown():
             try:
                 # Where is the robot after this iteration's sleep:
                 (trans,rot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
+                #**************
+                print(str(rot))
+                #**************
+                (roll,pitch,newYaw) = euler_from_quaternion(rot)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                print("Transform exception")
                 continue
             
+            #***************8
+            print(str(newYaw))
+            #***************8
+            
             # Compute total rotation traveled:
-            if targetRotRad > 0:
+            if targetYawRad > 0:
                 rotTraveled += abs(rot[3] - prevRot)
             else:
                 rotTraveled -= abs(rot[3] - prevRot)
@@ -598,9 +613,10 @@ class RobotBaseMotionThread(threading.Thread):
 
                 
             # Is rotation goal reached?
-            if (abs(targetRotRad - rotTraveled) <= rotToleranceRad) or\
-                (rotTargetGreater and targetRotRad <= rotTraveled) or\
-                (not rotTargetGreater and targetRotRad > rotTraveled):
+            #****if (abs(targetYawRad - rotTraveled) <= rotToleranceRad) or\
+            if (abs(targetYawRad - newYaw) <= rotToleranceRad) or\
+                (rotTargetGreater and targetYawRad <= rotTraveled) or\
+                (not rotTargetGreater and targetYawRad > rotTraveled):
                 rotGoalReached = True;
                 twistMsg.angular = Vector3(0.0,0.0,0.0);
             
@@ -617,15 +633,19 @@ class RobotBaseMotionThread(threading.Thread):
                 yGoalReached = True;
                 twistMsg.linear = Vector3(twistMsg.linear.x, 0.0, 0.0);
             
-            if rotGoalReached and xGoalReached and rotGoalReached:
+            if rotGoalReached and xGoalReached and yGoalReached:
                 self.stop();
             
             prevRot = rot[3]
             prevX   = trans[0]
             prevY   = trans[1]
             
-            PR2RobotScript.baseMovementPublisher.publish(twistMsg);
-            time.sleep(UPDATE_RATE)
+            # Time to send a Twist message to keep the base moving?
+            timeNow = rospy.get_time();
+            if (timeNow - prevTwistSendTime) >= UPDATE_RATE:
+                PR2RobotScript.baseMovementPublisher.publish(twistMsg);
+                prevTwistSendTime = timeNow;
+            time.sleep(valueCheckRate)
             continue;           
         
     def stop(self):

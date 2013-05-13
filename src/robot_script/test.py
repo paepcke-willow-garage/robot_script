@@ -34,10 +34,19 @@ BOTH  = pr2.BOTH
 
 #pr2.moveBase(rotation=10)
 #pr2.moveBase(rotation=0)        
-pr2.moveBase(rotation=90)
+#****pr2.moveBase(rotation=90)
 #pr2.moveBase(rotation=-90)
 
 #pr2.moveBase(place=(1.0,0.0,0.0))    
 #pr2.moveBase(place=(-1.0,0.0,0.0))    
 
 
+
+from tf.transformations import euler_from_quaternion
+from geometry_msgs.msg import Quaternion
+
+for deg in range(360):
+    rad = pr2.degree2rad(deg)
+    quat = (0.0,0.0,1.0,rad)
+    (roll,pitch,yaw) = euler_from_quaternion(quat)
+    print("Yaw " + str(deg) + " deg (" + str(rad) + "rad): " + str(yaw))
