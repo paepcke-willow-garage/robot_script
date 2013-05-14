@@ -2,8 +2,10 @@
 
 from robot_scripting import PR2RobotScript as pr2
 from robot_scripting import aboutEq
+from geometry_msgs.msg import Quaternion
 import rospy
 import sys
+from robot_script.robot_scripting import PR2RobotScript
 
 LEFT  = pr2.LEFT
 RIGHT = pr2.RIGHT
@@ -32,11 +34,15 @@ BOTH  = pr2.BOTH
 #for i in range(40):
 #    print str(pr2.getSensorReading('head_tilt_joint'))
 
+#print(str(pr2.odometryFromBaseFrame(0.0, 0.0, 0.0, 90)))
+
+
 #pr2.moveBase(rotation=10)
 #pr2.moveBase(rotation=0)        
 pr2.moveBase(rotation=90)
 #pr2.moveBase(rotation=-90)
 
+#
 #pr2.moveBase(place=(1.0,0.0,0.0))    
 #pr2.moveBase(place=(-1.0,0.0,0.0))    
 

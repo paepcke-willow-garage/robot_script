@@ -14,7 +14,7 @@ import math
 import random
 
 from pr2_controllers_msgs.msg import *
-from pr2_gripper_sensor_msgs.msg import *
+#*****from pr2_gripper_sensor_msgs.msg import *
 from pr2_controllers_msgs.msg import *
 from trajectory_msgs.msg import *
 from sensor_msgs.msg import *
