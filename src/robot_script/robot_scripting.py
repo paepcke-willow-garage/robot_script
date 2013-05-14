@@ -74,7 +74,7 @@ class Tolerances:
     ANGULAR       = 10;    # +/- degrees
     DISTANCE      = 0.02   # +/- meters
     BASE_DISTANCE = 0.2    # +/- meters (Base less accurate via odometry)
-    BASE_ANGLE    = 20     # +/- degrees
+    BASE_ANGLE    = 5      # +/- degrees
 
 class FullPose(object):
     '''
@@ -109,12 +109,17 @@ class RobotScript(object):
         
     # ----------------  Private Methods and Classes   -----------------------
 
-    @staticmethod
-    def initialize():
-        if RobotScript.frameTransformer is None:
-            RobotScript.frameTransformer = TransformerROS();
-            # Allow frame transformer to collect state:
-            rospy.timer.sleep(2.0)
+    #===========================================================================
+    
+    # For use with TransformROS.transformPose(), which couldn't find frame /odom 
+    # or frame /odom_combined:
+    # @staticmethod
+    # def initialize():
+    #    if RobotScript.frameTransformer is None:
+    #        RobotScript.frameTransformer = TransformerROS();
+    #        # Allow frame transformer to collect state:
+    #        rospy.timer.sleep(2.0)
+    #===========================================================================
 
     @staticmethod
     def degree2rad(deg):
@@ -124,35 +129,37 @@ class RobotScript(object):
     def rad2degree(rad):
         return 180.0*rad/numpy.pi
     
-    @staticmethod
-    def odometryFromBaseFrame(x,y,z, rot, angleUnits=AngleUnits.DEGREES):
-        '''
-        'base_footprint', 'odom_combined'
-        '''
-        if RobotScript.frameTransformer is None:
-            RobotScript.initialize()
-            
-        msgHeader      = Header(frame_id='base_footprint')
-        posePoint      = Point(x, y, z)
-        if angleUnits == AngleUnits.RADIANS:
-            poseQuaternion = Quaternion(0.0, 0.0, 1.0, rot)
-        else:
-            poseQuaternion = Quaternion(0.0, 0.0, 1.0, RobotScript.degree2rad(rot))
-        pose           = Pose(position=posePoint, orientation=poseQuaternion)
-        poseStamped    = PoseStamped(header=msgHeader, pose=pose)
-        
-        xformedPoseMsg = RobotScript.frameTransformer.transformPose('odom_combined', poseStamped)
-
-        if angleUnits == AngleUnits.RADIANS:
-            resRot = xformedPoseMsg.orientation.w
-        else:
-            resRot = RobotScript.rad2degree(xformedPoseMsg.orientation.w)
-            
-        res = (xformedPoseMsg.pose.position.x,
-               xformedPoseMsg.pose.position.y,
-               xformedPoseMsg.pose.position.z,
-               resRot)
-        return res
+    # For use with TransformROS.transformPose(), which couldn't find frame /odom 
+    # or frame /odom_combined:
+#    @staticmethod
+#    def odometryFromBaseFrame(x,y,z, rot, angleUnits=AngleUnits.DEGREES):
+#        '''
+#        'base_footprint', 'odom_combined'
+#        '''
+#        if RobotScript.frameTransformer is None:
+#            RobotScript.initialize()
+#            
+#        msgHeader      = Header(frame_id='base_footprint')
+#        posePoint      = Point(x, y, z)
+#        if angleUnits == AngleUnits.RADIANS:
+#            poseQuaternion = Quaternion(0.0, 0.0, 1.0, rot)
+#        else:
+#            poseQuaternion = Quaternion(0.0, 0.0, 1.0, RobotScript.degree2rad(rot))
+#        pose           = Pose(position=posePoint, orientation=poseQuaternion)
+#        poseStamped    = PoseStamped(header=msgHeader, pose=pose)
+#        
+#        xformedPoseMsg = RobotScript.frameTransformer.transformPose('odom_combined', poseStamped)
+#
+#        if angleUnits == AngleUnits.RADIANS:
+#            resRot = xformedPoseMsg.orientation.w
+#        else:
+#            resRot = RobotScript.rad2degree(xformedPoseMsg.orientation.w)
+#            
+#        res = (xformedPoseMsg.pose.position.x,
+#               xformedPoseMsg.pose.position.y,
+#               xformedPoseMsg.pose.position.z,
+#               resRot)
+#        return res
 
     # ----------------  Class Pr2RobotScript  -----------------------
     
@@ -584,17 +591,23 @@ class RobotBaseMotionThread(threading.Thread):
     def run(self):
         RobotBaseMotionThread.oneThreadRunning = self;
         targetRotRad = PR2RobotScript.degree2rad(self.targetRotDeg);
-        #*****targetYawRad = 0.00276222 * abs(targetRotDeg) + 3.14159265359
         
-        #***************8
-        targetYawRad = targetRotRad
-        #targetCoords = [0.0, 0.0, 1.0, targetRotRad]
-        #(targetRoll, targetPitch, targetYawRad) = euler_from_quaternion(targetCoords);
-        #print("Target: " + str(targetYawRad))
-        #***************8
+        # Take care for target angles > 360:
+        self.targetRotDeg = self.targetRotDeg % 360
         
-        rotToleranceRad = PR2RobotScript.degree2rad(Tolerances.BASE_ANGLE)
-        rotTraveled  = 0.0
+        # Map user input degrees into 0->-180, and -180->0:
+        # target degrees positive: 0->180 or 181->360:
+        if self.targetRotDeg >= 0 and self.targetRotDeg <= 180:
+            targetYawXformed = -self.targetRotDeg
+        elif self.targetRotDeg > 180:
+            targetYawXformed = 360 - self.targetRotDeg
+            
+        # target degrees negative: 0->-180 or -181->-360:
+        elif self.targetRotDeg < 0 and self.targetRotDeg >= -180:
+            self.targetRotDeg = -self.targetRotDeg
+        elif self.targetRotDeg < -181:
+            targetYawXformed = 360 + self.targetRotDeg
+            
         xTraveled = 0.0
         yTraveled = 0.0
         rotGoalReached = False
@@ -612,16 +625,13 @@ class RobotBaseMotionThread(threading.Thread):
                 # 
                 prevX     = initialTrans[0]   # scalar meters
                 prevY     = initialTrans[1]   # scalar meters
+                # Get yaw from rotation quaternion:
                 (initRoll, initPitch, initYaw) = euler_from_quaternion(initialRot)
-                #*****targetYawRad = initYaw + PR2RobotScript.degree2rad(self.targetQuaternion.w)
-                # Need to detect later if amount traveled slips past the target,
-                # because of bad sampling luck:
                 
-                if targetYawRad > initYaw:
-                    rotTargetGreater = True
-                else:
-                     rotTargetGreater = False
-
+                # Map initial rotation from PR2 to user's 0-360 degree:
+                initYawDeg = 57.295779504 * initYaw - 1.47009176
+                
+                # Think
                 if self.targetX > initialTrans[0]:
                     xTargetGreater = True
                 else:
@@ -637,27 +647,27 @@ class RobotBaseMotionThread(threading.Thread):
                 continue
             
         # Keep whipping the base controller till goals are reached 
-        # That whipping happens every UPDATE_PERIOD seconds. At ten times
+        # That whipping happens every UPDATE_PERIOD seconds. At 1.5 times
         # that rate, check location and angle of base to ensure that
         # we don't miss reaching the target:
-        #valueCheckRate = UPDATE_PERIOD / 500.0
+
         valueCheckRate = UPDATE_PERIOD / 1.5
         prevTwistSendTime = rospy.get_time()
+        
         while self.keepRunning and not rospy.is_shutdown():
             try:
                 # Where is the robot after this iteration's sleep:
                 (trans,rot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
+                
+                # Current yaw from quaternion:
                 (roll,pitch,newYaw) = euler_from_quaternion(rot)
-                #***************8
-                #print("Raw rad: " + str(newYaw) + "; raw deg: " + str(PR2RobotScript.rad2degree(newYaw)))
-                #***************8
+                
+                # Map current yaw to user's 0-360: 
+                newYawDeg = 57.295779504 * newYaw - 1.47009176
+                
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
             
-            #***************8
-            print(str(newYaw))
-            #***************8
-
             if self.targetX > 0:
                 xTraveled += abs(trans[0] - prevX)
             else:
@@ -669,11 +679,16 @@ class RobotBaseMotionThread(threading.Thread):
                 yTraveled -= abs(trans[1] - prevY)
 
                 
-            # Is rotation goal reached?
-            if (abs(targetYawRad - newYaw) <= rotToleranceRad) or\
-                (rotTargetGreater and targetYawRad <= rotTraveled) or\
-                (not rotTargetGreater and targetYawRad > rotTraveled):
+            # Is rotation goal reached? Yes if target and current rot
+            # are of the same sign, and they are within
+            # tolerance distance:
+            if ((targetYawXformed >= 0 and\
+                newYawDeg >= 0) or\
+                (targetYawXformed <= 0) and\
+                newYawDeg <= 0) and\
+                (abs(targetYawXformed - newYawDeg) <= Tolerances.BASE_ANGLE):
                 rotGoalReached = True;
+                # No more turning:
                 twistMsg.angular = Vector3(0.0,0.0,0.0);
             
             # Are x and y goals reached?
@@ -692,7 +707,7 @@ class RobotBaseMotionThread(threading.Thread):
             if rotGoalReached and xGoalReached and yGoalReached:
                 self.stop();
             
-            prevRot = rot[3]
+            prevRot = rot[3] #*******8
             prevX   = trans[0]
             prevY   = trans[1]
             
