@@ -67,7 +67,27 @@ def pose_torso(position, dur):
 def actionClient(topic, t):
     rospy.logdebug(str(t));
     c = actionlib.SimpleActionClient(topic, t)
-    c.wait_for_server()
+    # Check whether rostime is running. If not, the
+    # call to wait_for_server() below will loop forever
+    # inside wait_for_server():
+#    if rospy.get_rostime().to_sec() == 0.0:
+#            msg = "While trying to make an action client for topic %s, discovered that rostime clock is not running." % str(topic)
+#            rospy.logerr(msg)
+#            raise RuntimeError(msg)
+    startTime = rospy.get_time()
+    keepWaiting = True
+    while keepWaiting:
+        #waitSucceeded = c.wait_for_server(rospy.Duration.from_sec(0.2))
+        waitSucceeded = c.wait_for_server(rospy.Duration(1.0))
+        if waitSucceeded:
+            keepWaiting = False
+            rospy.loginfo('Waiting for server for topic %s.' % str(topic))
+            continue
+        if (rospy.get_time() - startTime) > 5:
+            msg = "Cannot start an action client for topic %s. The respective server is not running." % str(topic)
+            rospy.logerr(msg)
+            raise RuntimeError(msg)
+        rospy.loginfo("Waiting for server for topic %s..." % str(topic))
     return c
 
 def TrajClient(t):

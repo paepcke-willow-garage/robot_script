@@ -59,8 +59,7 @@ from tf.transformations import euler_from_quaternion
 import pr2_simple_interface
 
 # Period at which base motion gets refreshed:
-#*****UPDATE_PERIOD = 0.1; # seconds
-UPDATE_PERIOD = 0.01; # seconds
+UPDATE_PERIOD = 0.1; # seconds
 
 class Units:
     ANGULAR  = 0;
@@ -74,7 +73,7 @@ class Tolerances:
     ANGULAR       = 10;    # +/- degrees
     DISTANCE      = 0.02   # +/- meters
     BASE_DISTANCE = 0.2    # +/- meters (Base less accurate via odometry)
-    BASE_ANGLE    = 5      # +/- degrees
+    BASE_ANGLE    = 15     # +/- degrees
 
 class RotDirection:
     CLOCKWISE = 0;
@@ -222,7 +221,6 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.sensor_observer = PR2RobotScript.PR2SensorObserver()
         PR2RobotScript.sensor_observer.start()
         PR2RobotScript.transformListener = tf.TransformListener()
-                
         try:
             pass
             #*****rospy.wait_for_service("spawn", timeout=2.0)
@@ -466,7 +464,7 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.waitFor(jointNames, newAngles)
           
     @staticmethod
-    def moveBase(place=(0.0,0.0,0.0), rotation=0.0, duration=3.0, wait=True):
+    def moveBase(place=(0.0,0.0,0.0), rotation=0.0, duration=0.5, wait=True):
         '''
         Move the robot base to a different position, turning its torso at the same time.
         @param place: a tuple with x,y,z coordinates of the destination
@@ -598,15 +596,16 @@ class RobotBaseMotionThread(threading.Thread):
         
     def run(self):
         RobotBaseMotionThread.oneThreadRunning = self;
-        targetRotRad = PR2RobotScript.degree2rad(self.targetRotDeg);
-        
+
+        properRangeRot = abs(self.targetRotDeg) % 360
         # Take care for target angles > 360:
-        self.targetRotDeg = self.targetRotDeg % 360
         if self.targetRotDeg < 0:
+            self.targetRotDeg = -properRangeRot
             rotDirection = RotDirection.CLOCKWISE
         else:
-            rotDirection = RotDirection.COUNTER_CLOCKWISE
-        
+             self.targetRotDeg = properRangeRot
+             rotDirection = RotDirection.COUNTER_CLOCKWISE
+
         # Map user input degrees into 0->-180, and -180->0:
         # target degrees positive: 0->180 or 181->360:
         if self.targetRotDeg >= 0 and self.targetRotDeg <= 180:
@@ -616,7 +615,7 @@ class RobotBaseMotionThread(threading.Thread):
             
         # target degrees negative: 0->-180 or -181->-360:
         elif self.targetRotDeg < 0 and self.targetRotDeg >= -180:
-            self.targetYawXformed = -self.targetRotDeg
+            targetYawXformed = -self.targetRotDeg
         elif self.targetRotDeg < -181:
             targetYawXformed = 360 + self.targetRotDeg
             
@@ -625,10 +624,13 @@ class RobotBaseMotionThread(threading.Thread):
         yGoalReached   = False
         
         twistMsg  = Twist();
-        twistMsg.linear  = Vector3(self.targetX, self.targetY, self.targetZ);  
-        #*****twistMsg.angular = Vector3(0.0,0.0, rotSpeedRadPerSec));
-        twistMsg.angular  = Vector3(0.0,0.0,1.0);
-                
+        twistMsg.linear  = Vector3(self.targetX, self.targetY, self.targetZ);
+        
+        rotSpeedRadPerSec = RobotScript.degree2rad(abs(targetYawXformed)) / self.motionDuration
+        if rotDirection == RotDirection.CLOCKWISE:
+            rotSpeedRadPerSec = -rotSpeedRadPerSec
+        twistMsg.angular  = Vector3(0.0,0.0,rotSpeedRadPerSec);
+                        
         # Get initial positions: translation as Vector3 (x,y,z), and rot as quaternion:
         while self.keepRunning and not rospy.is_shutdown():
             try:
@@ -772,20 +774,24 @@ class RobotBaseMotionThread(threading.Thread):
                  ):
                 return True;
                   
-        
+        # No discontinuity crossing: if target and
+        # current are in different half-circles, they
+        # can't be equal:
         if not self.equalSign(targetRot, currRot):
             return False;
         if rotDirection == RotDirection.COUNTER_CLOCKWISE:
             # are we in left half of circle (0 at top, -180 at bottom):
             if currRot <= 0:
-                # Left half of cicle, going from 0 to -180
-                if currRot <= targetRot:
+                # Left half of circle, going from 0 to -180
+                # Did we overshoot, or are within tolerance just
+                # before reaching target?
+                if (currRot <= targetRot + Tolerances.BASE_ANGLE):
                     return True;
                 else:
                     return False;
             else:
                 # Right half of the circle going from 180deg to 0:
-                if currRot <= targetRot:
+                if (currRot <= targetRot + Tolerances.BASE_ANGLE):
                     return True;
                 else:
                     return False;
@@ -794,12 +800,12 @@ class RobotBaseMotionThread(threading.Thread):
         # Are we in left half of circle going -180 toward 0 clockwise?
         if currRot <= 0:
             # Left half going -180 towards 0 clockwise:
-            if currRot >= targetRot:
+            if currRot >= targetRot - Tolerances.BASE_ANGLE:
                 return True;
             else:
                 return False;
         # Right half of circle going 0 to 180 clockwise:
-        if currRot >= targetRot:
+        if currRot >= targetRot - Tolerances.BASE_ANGLE:
             return True;
         else:
             return False; 
