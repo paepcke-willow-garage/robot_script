@@ -76,6 +76,14 @@ class Tolerances:
     BASE_DISTANCE = 0.2    # +/- meters (Base less accurate via odometry)
     BASE_ANGLE    = 5      # +/- degrees
 
+class RotDirection:
+    CLOCKWISE = 0;
+    COUNTER_CLOCKWISE = 1;
+
+class Sign:
+    POSITIVE = 1;
+    NEGATIVE = -1
+
 class FullPose(object):
     '''
     Container for a Pose instance and a Quarternion.
@@ -594,6 +602,10 @@ class RobotBaseMotionThread(threading.Thread):
         
         # Take care for target angles > 360:
         self.targetRotDeg = self.targetRotDeg % 360
+        if self.targetRotDeg < 0:
+            rotDirection = RotDirection.CLOCKWISE
+        else:
+            rotDirection = RotDirection.COUNTER_CLOCKWISE
         
         # Map user input degrees into 0->-180, and -180->0:
         # target degrees positive: 0->180 or 181->360:
@@ -604,15 +616,14 @@ class RobotBaseMotionThread(threading.Thread):
             
         # target degrees negative: 0->-180 or -181->-360:
         elif self.targetRotDeg < 0 and self.targetRotDeg >= -180:
-            self.targetRotDeg = -self.targetRotDeg
+            self.targetYawXformed = -self.targetRotDeg
         elif self.targetRotDeg < -181:
             targetYawXformed = 360 + self.targetRotDeg
             
-        xTraveled = 0.0
-        yTraveled = 0.0
         rotGoalReached = False
         xGoalReached   = False
         yGoalReached   = False
+        
         twistMsg  = Twist();
         twistMsg.linear  = Vector3(self.targetX, self.targetY, self.targetZ);  
         #*****twistMsg.angular = Vector3(0.0,0.0, rotSpeedRadPerSec));
@@ -622,25 +633,25 @@ class RobotBaseMotionThread(threading.Thread):
         while self.keepRunning and not rospy.is_shutdown():
             try:
                 (initialTrans, initialRot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
-                # 
-                prevX     = initialTrans[0]   # scalar meters
-                prevY     = initialTrans[1]   # scalar meters
+                
+                initialX = initialTrans[0];
+                # X axis travel forward runs towards -inf,
+                # So must subtract X:
+                finalX   = initialX - self.targetX
+                
+                initialY = initialTrans[1];
+                # Y axis: travel left runs towards -inf
+                finalY   = initialY - self.targetY
+                        
                 # Get yaw from rotation quaternion:
                 (initRoll, initPitch, initYaw) = euler_from_quaternion(initialRot)
                 
                 # Map initial rotation from PR2 to user's 0-360 degree:
                 initYawDeg = 57.295779504 * initYaw - 1.47009176
-                
-                # Think
-                if self.targetX > initialTrans[0]:
-                    xTargetGreater = True
+                if initYawDeg >= 0:
+                    self.currSign = Sign.POSITIVE;
                 else:
-                    xTargetGreater = False
-                
-                if self.targetY > initialTrans[1]:
-                    yTargetGreater = True
-                else:
-                    yTargetGreater = False
+                    self.currSign = Sign.NEGATIVE;
                 
                 break;
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
@@ -659,6 +670,9 @@ class RobotBaseMotionThread(threading.Thread):
                 # Where is the robot after this iteration's sleep:
                 (trans,rot) = PR2RobotScript.transformListener.lookupTransform('base_footprint', 'odom_combined', rospy.Time(0));
                 
+                newX = trans[0];
+                newY = trans[1];
+                
                 # Current yaw from quaternion:
                 (roll,pitch,newYaw) = euler_from_quaternion(rot)
                 
@@ -668,48 +682,34 @@ class RobotBaseMotionThread(threading.Thread):
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 continue
             
-            if self.targetX > 0:
-                xTraveled += abs(trans[0] - prevX)
-            else:
-                xTraveled -= abs(trans[0] - prevX)
-
-            if self.targetY > 0:
-                yTraveled += abs(trans[1] - prevY)
-            else:
-                yTraveled -= abs(trans[1] - prevY)
-
-                
             # Is rotation goal reached? Yes if target and current rot
-            # are of the same sign, and they are within
-            # tolerance distance:
-            if ((targetYawXformed >= 0 and\
-                newYawDeg >= 0) or\
-                (targetYawXformed <= 0) and\
-                newYawDeg <= 0) and\
-                (abs(targetYawXformed - newYawDeg) <= Tolerances.BASE_ANGLE):
+            # are of the same sign, and current rotation crossed
+            # target angle:
+            if  not rotGoalReached and\
+                self.angleReachedOrExceeded(targetYawXformed, newYawDeg, rotDirection):
                 rotGoalReached = True;
                 # No more turning:
                 twistMsg.angular = Vector3(0.0,0.0,0.0);
             
             # Are x and y goals reached?
-            if (abs(self.targetX - xTraveled) <= Tolerances.DISTANCE) or\
-                (xTargetGreater and self.targetX <= xTraveled) or\
-                (not xTargetGreater and self.targetX > xTraveled):
+            if not xGoalReached and\
+                (
+                 ((finalX >= initialX) and (newX >= finalX)) or\
+                 ((finalX < initialX) and (newX < finalX))
+                 ):
                 xGoalReached = True;
                 twistMsg.linear = Vector3(0.0, twistMsg.linear.y, 0.0);
             
-            if (abs(self.targetY - yTraveled) <= Tolerances.DISTANCE) or\
-                (yTargetGreater and self.targetY <= yTraveled) or\
-                (not yTargetGreater and self.targetY > yTraveled):
+            if not yGoalReached and\
+                (  
+                 ((finalY >= initialY) and (newY >= finalY)) or\
+                 ((finalY < initialY) and (newY < finalY))
+                 ):
                 yGoalReached = True;
                 twistMsg.linear = Vector3(twistMsg.linear.x, 0.0, 0.0);
             
             if rotGoalReached and xGoalReached and yGoalReached:
                 self.stop();
-            
-            prevRot = rot[3] #*******8
-            prevX   = trans[0]
-            prevY   = trans[1]
             
             # Time to send a Twist message to keep the base moving?
             timeNow = rospy.get_time();
@@ -722,6 +722,87 @@ class RobotBaseMotionThread(threading.Thread):
     def stop(self):
         self.keepRunning = False;
         RobotBaseMotionThread.oneThreadRunning = None;
+        
+    def equalSign(self, a, b):
+        return ((a <= 0) and (b <= 0)) or ((a >= 0) and (b >= 0)) 
+
+    def angleReachedOrExceeded(self, targetRot, currRot, rotDirection):
+        '''
+        Figure out whether robot's rotation has reached or exceeded a
+        given desired limit. If 0 rotation is robot looking to 12 o'clock,
+        PR2 yaw counter-clockwise runs from 0deg at 12 o'clock to -180deg 
+        at 6 o'clock along the left half of the clock face. Yaw continues
+        from 6 o'clock being +180deg at 5:20 o'clock to 0deg at noon along
+        the right half of the clock face.
+         
+        @param targetRot: rotation to be reached
+        @type targetRot: float (degrees)
+        @param currRot: current robot rotation
+        @type currRot: float (degrees)
+        @param rotDirection: whether robot is turning clockwise or counter-clockwise
+        @type rotDirection: RotDirection
+        '''
+        
+        # Did rotation cross a discontinuity? i.e. across
+        # 0 or 180?
+        if (self.currSign == Sign.POSITIVE) and (currRot < 0):
+            # Crossed from positive to negative. Going clockwise
+            # that would be from +180 to -180; counter_clockwise
+            # it would be +1 to -1
+            self.currSign = Sign.NEGATIVE;
+            if (rotDirection == RotDirection.CLOCKWISE) and\
+                (
+                 (targetRot == 180) or\
+                 (targetRot == -180)
+                 ):
+                return True;
+            elif (rotDirection == RotDirection.COUNTER_CLOCKWISE) and (targetRot == 0):
+                return True;
+        elif (self.currSign == Sign.NEGATIVE) and (currRot > 0):
+            # Crossed from negative to positive. Going clockwise
+            # that would be from -1 to +1; counter_clockwise
+            # it would be -180 to +180:
+            self.currSign = Sign.POSITIVE;
+            if (rotDirection == RotDirection.CLOCKWISE) and (targetRot == 0):
+                return True;
+            elif (rotDirection == RotDirection.COUNTER_CLOCKWISE) and\
+                (
+                 (targetRot == 180) or\
+                 (targetRot == -180)
+                 ):
+                return True;
+                  
+        
+        if not self.equalSign(targetRot, currRot):
+            return False;
+        if rotDirection == RotDirection.COUNTER_CLOCKWISE:
+            # are we in left half of circle (0 at top, -180 at bottom):
+            if currRot <= 0:
+                # Left half of cicle, going from 0 to -180
+                if currRot <= targetRot:
+                    return True;
+                else:
+                    return False;
+            else:
+                # Right half of the circle going from 180deg to 0:
+                if currRot <= targetRot:
+                    return True;
+                else:
+                    return False;
+        
+        # Going clockwise
+        # Are we in left half of circle going -180 toward 0 clockwise?
+        if currRot <= 0:
+            # Left half going -180 towards 0 clockwise:
+            if currRot >= targetRot:
+                return True;
+            else:
+                return False;
+        # Right half of circle going 0 to 180 clockwise:
+        if currRot >= targetRot:
+            return True;
+        else:
+            return False; 
 
 
 class PR2Base(object):

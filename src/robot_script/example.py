@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 '''
+For documentation, please see also: http://www.ros.org/wiki/robot_script
+
+
 B{List of available commands:}
 
 Gripper and Head:

@@ -46,8 +46,14 @@ BOTH  = pr2.BOTH
 #pr2.moveBase(rotation=-135)
 
 #
-pr2.moveBase(place=(1.0,0.0,0.0))    
+#pr2.moveBase(place=(1.0,0.0,0.0))    
 #pr2.moveBase(place=(-1.0,0.0,0.0))    
+#pr2.moveBase(place=(0.0,1.0,0.0))    
+#pr2.moveBase(place=(0.0,-1.0,0.0))    
+
+pr2.moveBase(place=(1.0,-3.0,0.0), rotation=135)    
+#pr2.moveBase(place=(1.0,-3.0,0.0))
+#pr2.moveBase(rotation=135)    
 
 
 
