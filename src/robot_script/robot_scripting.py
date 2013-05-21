@@ -214,8 +214,11 @@ class PR2RobotScript(RobotScript):
 
         if PR2RobotScript.initialized:
             return
-
-        rospy.init_node('robot_scripts', anonymous=True)
+        try:
+            rospy.init_node('robot_scripts', anonymous=True)
+        except rospy.ROSException:
+            # node already initialized
+            pass
         pr2_simple_interface.start(d=True)
         PR2RobotScript.base = PR2Base()
         PR2RobotScript.sensor_observer = PR2RobotScript.PR2SensorObserver()
@@ -817,6 +820,49 @@ class PR2Base(object):
         while RobotBaseMotionThread.oneThreadRunning is not None:
             time.sleep(0.2);
 
+class RunMotion(threading.Thread):
+    
+    oneMotionRunning = False
+    
+    def __init__(self, callable, *args, **kwargs):
+        if RunMotion.oneMotionRunning:
+            return;
+        else:
+           RunMotion.oneMotionRunning = True
+           
+        super(RunMotion, self).__init__();
+        self.callable = callable;
+        self.args =   args;
+        self.kwargs = kwargs;
+        self.start();
+        
+    def start(self, ):
+        super(RunMotion, self).start();
+
+    def run(self):
+        try:
+            if len(self.args) > 0 and len(self.kwargs) > 0: 
+                self.callable(self.args, self.kwargs);
+            elif len(self.args) > 0 and len(self.kwargs) == 0:
+                self.callable(self.args);
+            elif len(self.args) == 0 and len(self.kwargs) > 0:
+                self.callable(self.kwargs);
+            else:
+                self.callable();
+        except Exception as e:
+            rospy.logerr("In RunMotion: " + `e`)
+        PR2RobotScript.engageGears();
+        RunMotion.oneMotionRunning = False
+        
+    def stop(self):
+        PR2RobotScript.disengageGears();
+        
+    def pause(self):
+        PR2RobotScript.disengageGears();
+        
+    def resume(self):
+        PR2RobotScript.engageGears();
+
 def aboutEq(sensorName, val):
     sensorVal = PR2RobotScript.getSensorReading(sensorName);
     
@@ -848,6 +894,7 @@ def doComparison(sensorVal, targetVal, tolerance):
 
 if __name__ == "__main__":
     
-    rospy.init_node('robot_scripts', anonymous=True)
+    #rospy.init_node('robot_scripts', anonymous=True)
     #robot = RobotScript()
-    rospy.spin()
+    #rospy.spin()
+    pass

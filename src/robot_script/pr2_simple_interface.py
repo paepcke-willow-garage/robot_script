@@ -81,9 +81,8 @@ def actionClient(topic, t):
         waitSucceeded = c.wait_for_server(rospy.Duration(1.0))
         if waitSucceeded:
             keepWaiting = False
-            rospy.loginfo('Waiting for server for topic %s.' % str(topic))
             continue
-        if (rospy.get_time() - startTime) > 5:
+        if (rospy.get_time() - startTime) > 8:
             msg = "Cannot start an action client for topic %s. The respective server is not running." % str(topic)
             rospy.logerr(msg)
             raise RuntimeError(msg)
