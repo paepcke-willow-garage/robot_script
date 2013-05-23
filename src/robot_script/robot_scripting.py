@@ -820,24 +820,24 @@ class PR2Base(object):
         while RobotBaseMotionThread.oneThreadRunning is not None:
             time.sleep(0.2);
 
-class RunMotion(threading.Thread):
+class Motion(threading.Thread):
     
     oneMotionRunning = False
-    
+
     def __init__(self, callable, *args, **kwargs):
-        if RunMotion.oneMotionRunning:
-            return;
-        else:
-           RunMotion.oneMotionRunning = True
-           
-        super(RunMotion, self).__init__();
         self.callable = callable;
         self.args =   args;
         self.kwargs = kwargs;
-        self.start();
+        self.is_stopped = False
         
     def start(self, ):
-        super(RunMotion, self).start();
+        super(Motion, self).__init__();
+        if Motion.oneMotionRunning:
+            return;
+        else:
+           Motion.oneMotionRunning = True
+           self.is_stopped = False
+           super(Motion, self).start();
 
     def run(self):
         try:
@@ -848,14 +848,16 @@ class RunMotion(threading.Thread):
             elif len(self.args) == 0 and len(self.kwargs) > 0:
                 self.callable(self.kwargs);
             else:
-                self.callable();
+                self.callable(self);
         except Exception as e:
-            rospy.logerr("In RunMotion: " + `e`)
+            rospy.logerr("In Motion: " + `e`)
         PR2RobotScript.engageGears();
-        RunMotion.oneMotionRunning = False
+        Motion.oneMotionRunning = False
         
     def stop(self):
         PR2RobotScript.disengageGears();
+        Motion.oneMotionRunning = False
+        self.is_stopped = True
         
     def pause(self):
         PR2RobotScript.disengageGears();
