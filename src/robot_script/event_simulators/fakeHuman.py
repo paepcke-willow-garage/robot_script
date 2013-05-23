@@ -22,6 +22,10 @@ from visualization_msgs.msg import *
 # Superclass:
 from event_simulator import EventSimulator;
 
+# Time between invoking callback to client's script
+# (such as testFakeHuman.py)
+FRAME_INTERVAL = 0.1; # seconds
+
 # Enum:
 class MotionDirection:
     AWAY_FROM_ROBOT = 0
@@ -78,7 +82,7 @@ class FakeHuman(EventSimulator):
         # to self.update().
         threadSchedule[0.2] = None;
         self.startTime = time.time();
-        super(FakeHuman, self).start(threadSchedule, self.update, repeat=True);
+        super(FakeHuman, self).start(threadSchedule, self.update, repeat=True, callbackInterval=FRAME_INTERVAL);
 
     def publishTFPose(self, pose, name, parent):
         if (pose != None):

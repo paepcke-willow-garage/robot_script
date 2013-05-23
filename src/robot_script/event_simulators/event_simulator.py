@@ -37,7 +37,7 @@ class EventSimulator(threading.Thread):
     class for how applications may feed from that queue.
     '''
     
-    def start(self, schedule, callback, repeat=False):
+    def start(self, schedule, callback, repeat=False, callbackInterval=None):
         '''
         Starts the simulator. 
         @param schedule: plan with times and callback arguments. 
@@ -46,6 +46,14 @@ class EventSimulator(threading.Thread):
         @type callback: callable
         @param repeat: if True, schedule is excecuted over and over.
         @type repeat: boolean
+        @param: callbackInterval: if None, callbacks to the client only occur when a schedule
+                             milestone is reached. Else callbackInterval must be a number of
+                             (fractional) seconds. In that case, the underlying callback will be
+                             called every callbackInterval seconds with argument None, if 
+                             no schedule milestone has occurred. If current time is >=
+                             to the next schedule milestone actionTime, then the callback 
+                             is invoked with schedule[actionTime].
+        @type callbackInterval: {None | float}
         '''
         threading.Thread.__init__(self);
         if schedule is None or len(schedule) == 0:
@@ -53,6 +61,7 @@ class EventSimulator(threading.Thread):
         self.schedule    = schedule;
         self.callback    = callback;
         self.repeat      = repeat;
+        self.callbackInterval = callbackInterval;
         self.eventQueue  = Queue();
         self.keepRunning = True;
         signal.signal(signal.SIGINT, self.sigintHandler);    
@@ -76,12 +85,28 @@ class EventSimulator(threading.Thread):
                 # Schedule is in absolute number of seconds since program
                 # start. So compute distance between this and prev
                 # schedule entry:
-                sleepTime = actionTime - prevKeyframeTime; 
+                if self.callbackInterval is None:
+                    sleepTime = actionTime - prevKeyframeTime;
+                else:
+                    # Client wants callback every self.callbackInterval seconds:
+                    sleepTime = self.callbackInterval;
                 time.sleep(sleepTime);
                 if not self.keepRunning:
                     return;
-                prevKeyframeTime = actionTime;
-                result = self.callback(self.schedule[actionTime]);
+                # Decide whether we are at or beyond the next 
+                # schedule milestone. If we are, invoke the 
+                # callback with the schedule-specified argument.
+                # If we are in between schedule milestones, then
+                # only invoke a callback if self.callbackInterval
+                # is non-None:
+                now = time.time();
+                if now - prevKeyframeTime >= actionTime:
+                    prevKeyframeTime = actionTime;
+                    result = self.callback(self.schedule[actionTime]);
+                elif self.callbackInterval is not None:
+                    result = self.callback(None);
+                else:
+                    continue; # this branch shouldn't really be reached.
                 if result is not None:
                     self.eventQueue.put(result);
                 
