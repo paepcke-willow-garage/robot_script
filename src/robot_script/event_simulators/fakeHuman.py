@@ -191,7 +191,7 @@ class FakeHuman(EventSimulator):
         # return the new xy to the simulator, which will put it
         # into its out queue: 
         newDistance = self.getPlanarDistance(self.humanPose);
-        return newDistance;
+        return self.humanPose
         
     def visualizeFakeHuman(self):
         # Visualize the fake human:

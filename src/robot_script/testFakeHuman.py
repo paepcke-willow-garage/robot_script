@@ -37,9 +37,9 @@ def __init__():
     # the 'target' numbers are meters of distance from the robot, and the 
     # two speed components are meters/sec in the x and y direction, respectively.
     
-    motionSchedule[15]   = {'target': [1,0], 'speed': [0.05,0.0]} 
-    motionSchedule[20]  = {'target': [3,0], 'speed': [0.05,0.0]} 
-    motionSchedule[25]  = {'target': [4,0], 'speed': [0.05,0.0]}
+    motionSchedule[25]   = {'target': [1,-1], 'speed': [0.05,0.0]}
+    motionSchedule[30]  = {'target': [3,2], 'speed': [0.05,0.0]}
+    motionSchedule[35]  = {'target': [4,0], 'speed': [0.05,0.0]}
     
     # When the scheduled pose sequence is completed, it starts over.
     # Start the sequence with a call to a FakeHuman's start() method, passing
@@ -69,24 +69,20 @@ def sequence1(animation):
     It doesn't need to. It could just be a long-running motion
     which does eventually stop.
     '''
+    rospy.loginfo('Starting sequence 1')
     pr2.openGripper(LEFT)
     pr2.panHead(-60)
     pr2.moveArmJoint('l_shoulder_pan_joint', 0, duration=2.0)            
     pr2.moveArmJoint('l_shoulder_pan_joint', 90, duration=2.0)
     pr2.panHead(0)
     pr2.closeGripper(LEFT)
-
-def sleep_while_running(duration, animation):
-    start = time.time()
-    is_timedout = False
-    while (not is_timedout and not animation.is_stopped):
-        is_timedout = (time.time()-start) > duration
-        time.sleep(0.05)
+    rospy.loginfo('End of sequence 1')
 
 def sequence2(animation):
     #Robot's reaction to someone entering his personal space to interact with him.
-    print 'starting sequence 2'
-    pr2.rotateHead(human_angle, 2,wait=False)
+    rospy.loginfo('Starting sequence 2')
+
+    pr2.rotateHead(humanAngle, 2,wait=False)
     pr2.setTorso(.04 + pr2.getSensorReading("torso_lift_joint"), 1.0,  wait=False)
     #pr2.moveBase(rotation=new_PS_Angle, duration=7.0)
     joints = ['r_forearm_roll_joint', 'r_shoulder_lift_joint','r_wrist_roll_joint', 'r_wrist_flex_joint', 'r_upper_arm_roll_joint','r_shoulder_pan_joint'  ]
@@ -101,19 +97,13 @@ def sequence2(animation):
     pr2.moveArmJoint(['r_upper_arm_roll_joint'], [-3], duration=1.25)
     pr2.moveArmJoint(['r_upper_arm_roll_joint'], [0], duration=1.5)
 
-    sleep_while_running(7, animation)
-    
+    animation.sleep_while_running(7)
     pr2.rotateHead(2, .5)
-
-    sleep_while_running(2, animation)
-    
+    animation.sleep_while_running(2)
     pr2.tiltHead(-5, .5)
-    
-    sleep_while_running(6, animation)
-    
+    animation.sleep_while_running(6)
     pr2.rotateHead(0, .5)
-    
-    sleep_while_running(14, animation)
+    animation.sleep_while_running(14)
     
     pr2.setTorso(-.01 + pr2.getSensorReading("torso_lift_joint"), 4.0)
     joints = ['l_shoulder_pan_joint','l_elbow_flex_joint', 'l_shoulder_lift_joint', 'l_forearm_roll_joint','l_wrist_flex_joint','l_upper_arm_roll_joint', 'l_wrist_roll_joint']
@@ -121,31 +111,31 @@ def sequence2(animation):
     
     pr2.moveArmJoint(joints,values, duration=3.0, wait=False)
     joints = ['r_shoulder_pan_joint', 'r_shoulder_lift_joint','l_upper_arm_roll_joint']
-    values = [human_angle *.2 , 70, 0]
+    values = [humanAngle *.2 , 70, 0]
     pr2.moveArmJoint(joints,values, duration=3.0)
     
-    print 'Returning from sequence 2'
+    rospy.loginfo('End of sequence 2')
     #rospy.timer.sleep(800)
     
 def sequence3(animation):
     #a distance robot will notice someone.
-    print 'starting sequence 3'
+    rospy.loginfo('Starting sequence 3')
     pr2.tiltHead(-8,1)
-    pr2.rotateHead(human_angle, 1.5)
+    pr2.rotateHead(humanAngle, 1.5)
     #pr2.setTorso(.01, 4)
-    print 'return sequence 3'
+    rospy.loginfo('End of sequence 3')
     
 def sequence4(animation):
-    print 'starting sequence 4'
+    rospy.loginfo('Starting sequence 4')
     pr2.setTorso(.02, 4)
     rospy.timer.sleep(3)
-    print 'return sequence 4'
+    rospy.loginfo('End of sequence 4')
 
 
-human_angle = 0
+humanAngle = 0
 animation1 = Motion(sequence1)
 animation2 = Motion(sequence2)
-animation3 = Motion(sequence3)
+animation3 = Motion(sequence1)
 animation4 = Motion(sequence4)
 
 def main():
@@ -169,22 +159,23 @@ def main():
     
     state = NO_HUMANS
     
-    
     while (True):
         # Wait for a new position report from the human:
         
         newHumanLocation = eventQueue.get()
-        human_angle = 0 #TODO: update angle based on new loc
+        humanDistance = pr2.getPlanarDistance(newHumanLocation)
+        humanAngle = pr2.getAngle(newHumanLocation)
         
+        pr2.displayInfo('Robot state:' + state)
         #print('Human now at ' + str(newHumanLocation))
         
         ## UPDATE THE STATE
         
         if state == NO_HUMANS:
             ## In NO_HUMANS 
+            pr2.lookAtPoint(newHumanLocation, 1.0, wait=False)
     
-    
-            if newHumanLocation < 4:
+            if humanDistance < 4:
                 state = VISIBLE_HUMANS
                 print('Current state ' + state)
                 ## NO_HUMANS --> VISIBLE_HUMANS
@@ -192,17 +183,17 @@ def main():
                 animation3.start()
         
         elif state == VISIBLE_HUMANS:
-            ## In CLOSE_HUMANS 
-    
+            ## In CLOSE_HUMANS
+            pr2.lookAtPoint(newHumanLocation, 1.0, wait=False)
             
-            if newHumanLocation < 2:
+            if humanDistance < 2:
                 state = CLOSE_HUMANS
                 print('Current state ' + state)
                 ## VISIBLE_HUMANS --> CLOSE_HUMANS
                 animation3.stop()
                 animation2.start()
                 
-            elif newHumanLocation > 4.5:
+            elif humanDistance > 4.5:
                 state = NO_HUMANS
                 print('Current state ' + state)
                 ## VISIBLE_HUMANS --> NO_HUMANS
@@ -213,7 +204,7 @@ def main():
             ## In CLOSE_HUMANS 
             
             
-            if newHumanLocation > 2.5:
+            if humanDistance > 2.5:
                 state = VISIBLE_HUMANS
                 print('Current state ' + state)
                 

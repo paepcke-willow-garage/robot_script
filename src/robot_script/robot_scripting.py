@@ -53,6 +53,8 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Twist
 
+from visualization_msgs.msg import Marker
+
 from std_msgs.msg import Header
 from tf.transformations import euler_from_quaternion
 
@@ -136,6 +138,23 @@ class RobotScript(object):
     def rad2degree(rad):
         return 180.0*rad/numpy.pi
     
+    @staticmethod
+    def getAngle(pose):
+        return math.atan2(pose.position.y, pose.position.x)
+
+    @staticmethod
+    def getPlanarDistance(pose):
+        '''
+        Compute distance of a given pose from its origin in a 2d plane.
+        @param pose: pose to examine
+        @type pose: Pose
+        @return: linear distance
+        @rType: float
+        '''
+        vec = numpy.array((pose.position.x, pose.position.y))
+        return numpy.linalg.norm(vec) 
+
+
     # For use with TransformROS.transformPose(), which couldn't find frame /odom 
     # or frame /odom_combined:
 #    @staticmethod
@@ -169,6 +188,7 @@ class RobotScript(object):
 #        return res
 
     # ----------------  Class Pr2RobotScript  -----------------------
+    
     
 class PR2RobotScript(RobotScript):
     '''
@@ -205,6 +225,8 @@ class PR2RobotScript(RobotScript):
     pr2_joint_units = {}
 
     # ----------------  Public Methods -----------------------
+
+    markerPublisher = None
 
     def __init__(self):
         raise RuntimeError("RobotScript cannot be instantiated. Use the static methods.")
@@ -259,6 +281,19 @@ class PR2RobotScript(RobotScript):
             
         # Publisher for base movements        
         PR2RobotScript.baseMovementPublisher = rospy.Publisher('base_controller/command', Twist)
+
+    @staticmethod
+    def displayInfo(infoText):
+        infoPose = Pose(Point(0,0,2.5), Quaternion(0,0,0,1))
+        m = Marker(type=Marker.TEXT_VIEW_FACING, id=1000, lifetime=rospy.Duration(2), 
+                   pose=infoPose,
+                   scale=Vector3(0.5,0.1,0.1), header=Header(frame_id='base_footprint'),
+                   color=ColorRGBA(0.0, 1.0, 0.0, 0.8), text=infoText)
+        
+        if PR2RobotScript.markerPublisher is None:
+            PR2RobotScript.markerPublisher = rospy.Publisher('visualization_marker', Marker)
+
+        PR2RobotScript.markerPublisher.publish(m)
 
     @staticmethod
     def getSensorReading(sensorName):
@@ -361,7 +396,17 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.waitFor('head_pan_joint', pan);
             PR2RobotScript.waitFor('head_tilt_joint', tilt);
      
-        
+    @staticmethod
+    def lookAtPoint(pose, duration=1.0, wait=True):
+        if not PR2RobotScript.gearsEngaged:
+            return;
+        if not PR2RobotScript.initialized:
+            PR2RobotScript.initialize()
+        loc = pose.position
+        PR2RobotScript.head.look_at(loc.x, loc.y, loc.z, dur=duration)
+        if wait:
+            PR2RobotScript.head.wait_for();
+     
     @staticmethod
     def rotateHead(newVal, duration=1.0, wait=True):
         if not PR2RobotScript.gearsEngaged:
@@ -820,50 +865,91 @@ class PR2Base(object):
         while RobotBaseMotionThread.oneThreadRunning is not None:
             time.sleep(0.2);
 
-class Motion(threading.Thread):
-    
-    oneMotionRunning = False
+class ThreadInfo(object):
+    def __init__(self, callable, args, kwargs):
+        self.callable = callable
+        self.args = args
+        self.kwargs = kwargs
 
+
+class Motion():
+    
     def __init__(self, callable, *args, **kwargs):
-        self.callable = callable;
-        self.args =   args;
-        self.kwargs = kwargs;
+        self.runMotion = None
+        self.callable = callable
+        self.args = args
+        self.kwargs = kwargs
         self.is_stopped = False
         
-    def start(self, ):
-        super(Motion, self).__init__();
-        if Motion.oneMotionRunning:
-            return;
-        else:
-           Motion.oneMotionRunning = True
-           self.is_stopped = False
-           super(Motion, self).start();
-
-    def run(self):
-        try:
-            if len(self.args) > 0 and len(self.kwargs) > 0: 
-                self.callable(self.args, self.kwargs);
-            elif len(self.args) > 0 and len(self.kwargs) == 0:
-                self.callable(self.args);
-            elif len(self.args) == 0 and len(self.kwargs) > 0:
-                self.callable(self.kwargs);
-            else:
-                self.callable(self);
-        except Exception as e:
-            rospy.logerr("In Motion: " + `e`)
-        PR2RobotScript.engageGears();
-        Motion.oneMotionRunning = False
+    def start(self):
+        #if RunMotion.oneMotionRunning:
+        #    return;
+        #else:
+        
+        start = time.time()
+        is_timedout = False
+        while (not is_timedout and RunMotion.oneMotionRunning):
+            is_timedout = (time.time()-start) > 10.0
+            time.sleep(0.01)
+        
+        if is_timedout:
+            msg = 'Previous motion did not stop. Cannot start new motion.'
+            rospy.logerr(msg)
+            raise RuntimeError(msg)
+        
+        #RunMotion.oneMotionRunning = True
+        self.is_stopped = False
+        self.runMotion = RunMotion(self, self.callable, self.args, self.kwargs)
+        self.runMotion.start()
         
     def stop(self):
         PR2RobotScript.disengageGears();
-        Motion.oneMotionRunning = False
+        #RunMotion.oneMotionRunning = False
         self.is_stopped = True
         
     def pause(self):
         PR2RobotScript.disengageGears();
         
     def resume(self):
+        PR2RobotScript.engageGears();        
+
+    def sleep_while_running(self, duration):
+        rospy.loginfo('Sleeping during motion sequence for ' + str(duration) + ' seconds.')
+        start = time.time()
+        is_timedout = False
+        while (not is_timedout and not self.is_stopped):
+            is_timedout = (time.time()-start) > duration
+            time.sleep(0.05)
+
+class RunMotion(threading.Thread):
+    
+    oneMotionRunning = False
+   
+    def __init__(self, parentMotion, callable, *args, **kwargs):
+        super(RunMotion, self).__init__();
+        self.parentMotion = parentMotion
+        self.callable = callable
+        self.args = args
+        self.kwargs = kwargs
+        
+    def start(self, ):
+       PR2RobotScript.engageGears();    
+       super(RunMotion, self).start();
+
+    def run(self):
+        try:
+#            if len(self.args) > 0 and len(self.kwargs) > 0: 
+#                self.callable(self.args, self.kwargs);
+#            elif len(self.args) > 0 and len(self.kwargs) == 0:
+#                self.callable(self.args);
+#            elif len(self.args) == 0 and len(self.kwargs) > 0:
+#                self.callable(self.kwargs);
+#            else:
+            self.callable(self.parentMotion);
+        except Exception as e:
+            rospy.logerr("In Motion: " + `e`)
         PR2RobotScript.engageGears();
+        RunMotion.oneMotionRunning = False
 
 def aboutEq(sensorName, val):
     sensorVal = PR2RobotScript.getSensorReading(sensorName);

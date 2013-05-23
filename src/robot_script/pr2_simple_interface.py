@@ -233,7 +233,7 @@ class Head:
         pass
 
     def look_at(self, x, y, z, dur=1.0):
-        rospy.loginfo("Look at:" + str(x) + str(y) + str(z))
+        rospy.loginfo("Look at:" + str(x) + ',' + str(y) + ',' + str(z))
         g = PointHeadGoal()
         g.target.header.frame_id = 'base_link'
         g.target.point.x = x
