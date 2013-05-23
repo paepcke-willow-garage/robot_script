@@ -11,6 +11,7 @@ import numpy
 from math import *
 from random import randint
 from collections import OrderedDict;
+import signal;
 
 # ROS libraries
 import rospy
@@ -82,7 +83,8 @@ class FakeHuman(EventSimulator):
         # to self.update().
         threadSchedule[0.2] = None;
         self.startTime = time.time();
-        super(FakeHuman, self).start(threadSchedule, self.update, repeat=True, callbackInterval=FRAME_INTERVAL);
+        #******super(FakeHuman, self).start(threadSchedule, self.update, repeat=True, callbackInterval=FRAME_INTERVAL);
+        super(FakeHuman, self).start(motionSchedule, self.update, repeat=True, callbackInterval=FRAME_INTERVAL);
 
     def publishTFPose(self, pose, name, parent):
         if (pose != None):
@@ -203,6 +205,7 @@ class FakeHuman(EventSimulator):
       
 def sigintHandler(signum, frame):
     human.stop();      
+signal.signal(signal.SIGINT, sigintHandler);
 
 if __name__ == "__main__":
 

@@ -10,6 +10,8 @@
 #
 #    roslaunch robot_script fakeHumanExampleNeededServices.launch
 
+import signal;
+
 from robot_scripting import PR2RobotScript as pr2
 from robot_scripting import RunMotion
 from robot_scripting import aboutEq
@@ -31,9 +33,9 @@ motionSchedule = OrderedDict();
 # the 'target' numbers are meters of distance from the robot, and the 
 # two speed components are meters/sec in the x and y direction, respectively.
 
-motionSchedule[3]   = {'target': [2,0], 'speed': [0.5,0.0]}; 
-motionSchedule[10]  = {'target': [3,0], 'speed': [0.5,0.0]}; 
-motionSchedule[14]  = {'target': [4,0], 'speed': [0.5,0.0]};
+motionSchedule[3]   = {'target': [2,0], 'speed': [0.05,0.0]}; 
+motionSchedule[10]  = {'target': [3,0], 'speed': [0.05,0.0]}; 
+motionSchedule[14]  = {'target': [4,0], 'speed': [0.05,0.0]};
 
 # When the scheduled pose sequence is completed, it starts over.
 # Start the sequence with a call to a FakeHuman's start() method, passing

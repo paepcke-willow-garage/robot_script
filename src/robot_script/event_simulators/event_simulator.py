@@ -101,7 +101,7 @@ class EventSimulator(threading.Thread):
                 # is non-None:
                 now = time.time();
                 if now - prevKeyframeTime >= actionTime:
-                    prevKeyframeTime = actionTime;
+                    prevKeyframeTime = now;
                     result = self.callback(self.schedule[actionTime]);
                 elif self.callbackInterval is not None:
                     result = self.callback(None);
