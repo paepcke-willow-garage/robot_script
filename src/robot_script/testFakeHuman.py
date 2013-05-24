@@ -37,9 +37,9 @@ def __init__():
     # the 'target' numbers are meters of distance from the robot, and the 
     # two speed components are meters/sec in the x and y direction, respectively.
     
-    motionSchedule[25]   = {'target': [1,-1], 'speed': [0.05,0.0]}
-    motionSchedule[30]  = {'target': [3,2], 'speed': [0.05,0.0]}
-    motionSchedule[35]  = {'target': [4,0], 'speed': [0.05,0.0]}
+    motionSchedule[25]   = {'target': [1,-1], 'speed': [0.05,0.05]}
+    motionSchedule[30]  = {'target': [3,2], 'speed': [0.05,0.05]}
+    motionSchedule[35]  = {'target': [4,0], 'speed': [0.05,0.05]}
     
     # When the scheduled pose sequence is completed, it starts over.
     # Start the sequence with a call to a FakeHuman's start() method, passing
@@ -163,8 +163,8 @@ def main():
         # Wait for a new position report from the human:
         
         newHumanLocation = eventQueue.get()
-        humanDistance = pr2.getPlanarDistance(newHumanLocation)
-        humanAngle = pr2.getAngle(newHumanLocation)
+        humanDistance    = pr2.getPlanarDistance(newHumanLocation)
+        humanAngle       = pr2.getAngle(newHumanLocation)
         
         pr2.displayInfo('Robot state:' + state)
         #print('Human now at ' + str(newHumanLocation))

@@ -12,6 +12,7 @@ from math import *
 from random import randint
 from collections import OrderedDict;
 import signal;
+import copy;
 
 # ROS libraries
 import rospy
@@ -187,11 +188,11 @@ class FakeHuman(EventSimulator):
         # Move the human a little bit (we ignore the move direction):
         motionDirection = self.moveTowardsTarget(keyframeSpeed);
         self.visualizeFakeHuman();
-        # If the human reached a keyframe destination,
-        # return the new xy to the simulator, which will put it
-        # into its out queue: 
-        newDistance = self.getPlanarDistance(self.humanPose);
-        return self.humanPose
+        # Return a copy of the human pose (because self.humanPose
+        # is continuously updated:
+        humanPoint = Point(self.humanPose.position.x, self.humanPose.position.y, self.humanPose.position.z)
+        humanQuat  = Quaternion(self.humanPose.orientation.x, self.humanPose.orientation.y, self.humanPose.orientation.z ,self.humanPose.orientation.w);
+        return Pose(humanPoint,humanQuat)
         
     def visualizeFakeHuman(self):
         # Visualize the fake human:

@@ -636,6 +636,8 @@ class RobotBaseMotionThread(threading.Thread):
         self.targetZ = targetZ
         self.targetRotDeg = targetRotDeg
         self.motionDuration = motionDuration
+        
+        self.daemon = True
                     
         self.motionDuration = motionDuration
         self.keepRunning = True;
@@ -931,6 +933,8 @@ class RunMotion(threading.Thread):
         self.callable = callable
         self.args = args
         self.kwargs = kwargs
+        
+        self.daemon = True
         
     def start(self, ):
        PR2RobotScript.engageGears();    
