@@ -13,6 +13,7 @@
 import signal
 import rospy
 import time
+import sys
 from robot_scripting import PR2RobotScript as pr2
 from robot_scripting import Motion
 from robot_scripting import aboutEq
@@ -161,8 +162,15 @@ def main():
     
     while (True):
         # Wait for a new position report from the human:
-        
-        newHumanLocation = eventQueue.get()
+        # The 'try:...except' ensures that cnt-c properly 
+        # terminates the script.
+        try:
+            newHumanLocation = eventQueue.get()
+        except TypeError, KeyboardInterrupt:
+            human.stop()
+            Motion.exit()
+            sys.exit()
+            
         humanDistance    = pr2.getPlanarDistance(newHumanLocation)
         humanAngle       = pr2.getAngle(newHumanLocation)
         

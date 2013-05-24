@@ -923,6 +923,12 @@ class Motion():
             is_timedout = (time.time()-start) > duration
             time.sleep(0.05)
 
+    @staticmethod
+    def exit():
+        #threads = threading.enumerate();
+        #print(str(threads))
+        sys.exit()
+
 class RunMotion(threading.Thread):
     
     oneMotionRunning = False
