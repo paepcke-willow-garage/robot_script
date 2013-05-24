@@ -83,7 +83,8 @@ def sequence2(animation):
     #Robot's reaction to someone entering his personal space to interact with him.
     rospy.loginfo('Starting sequence 2')
 
-    pr2.rotateHead(humanAngle, 2,wait=False)
+    pr2.lookAtPoint(human.getHumanPose(), 1.0, wait=False)
+    #***pr2.rotateHead(humanAngle, 2,wait=False)
     pr2.setTorso(.04 + pr2.getSensorReading("torso_lift_joint"), 1.0,  wait=False)
     #pr2.moveBase(rotation=new_PS_Angle, duration=7.0)
     joints = ['r_forearm_roll_joint', 'r_shoulder_lift_joint','r_wrist_roll_joint', 'r_wrist_flex_joint', 'r_upper_arm_roll_joint','r_shoulder_pan_joint'  ]
@@ -99,11 +100,14 @@ def sequence2(animation):
     pr2.moveArmJoint(['r_upper_arm_roll_joint'], [0], duration=1.5)
 
     animation.sleep_while_running(7)
-    pr2.rotateHead(2, .5)
+    #***pr2.rotateHead(2, .5)
+    pr2.lookAtPoint(human.getHumanPose(), 1.0, wait=True)
     animation.sleep_while_running(2)
-    pr2.tiltHead(-5, .5)
+    #***pr2.tiltHead(-5, .5)
+    pr2.lookAtPoint(human.getHumanPose(), 1.0, wait=True)
     animation.sleep_while_running(6)
-    pr2.rotateHead(0, .5)
+    #***pr2.rotateHead(0, .5)
+    pr2.lookAtPoint(human.getHumanPose(), 1.0, wait=True)
     animation.sleep_while_running(14)
     
     pr2.setTorso(-.01 + pr2.getSensorReading("torso_lift_joint"), 4.0)
@@ -121,8 +125,10 @@ def sequence2(animation):
 def sequence3(animation):
     #a distance robot will notice someone.
     rospy.loginfo('Starting sequence 3')
-    pr2.tiltHead(-8,1)
-    pr2.rotateHead(humanAngle, 1.5)
+    #***pr2.tiltHead(-8,1)
+    pr2.lookAtPoint(human.getHumanPose(), 1.0, wait=False)
+    #***pr2.rotateHead(humanAngle, 1.5)
+    pr2.lookAtPoint(human.getHumanPose(), 1.0, wait=False)
     #pr2.setTorso(.01, 4)
     rospy.loginfo('End of sequence 3')
     
@@ -181,7 +187,6 @@ def main():
         
         if state == NO_HUMANS:
             ## In NO_HUMANS 
-            pr2.lookAtPoint(newHumanLocation, 1.0, wait=False)
     
             if humanDistance < 4:
                 state = VISIBLE_HUMANS
@@ -192,7 +197,6 @@ def main():
         
         elif state == VISIBLE_HUMANS:
             ## In CLOSE_HUMANS
-            pr2.lookAtPoint(newHumanLocation, 1.0, wait=False)
             
             if humanDistance < 2:
                 state = CLOSE_HUMANS
@@ -210,7 +214,6 @@ def main():
         
         elif state == CLOSE_HUMANS:
             ## In CLOSE_HUMANS 
-            
             
             if humanDistance > 2.5:
                 state = VISIBLE_HUMANS

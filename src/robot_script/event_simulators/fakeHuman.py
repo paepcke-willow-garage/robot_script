@@ -190,9 +190,7 @@ class FakeHuman(EventSimulator):
         self.visualizeFakeHuman();
         # Return a copy of the human pose (because self.humanPose
         # is continuously updated:
-        humanPoint = Point(self.humanPose.position.x, self.humanPose.position.y, self.humanPose.position.z)
-        humanQuat  = Quaternion(self.humanPose.orientation.x, self.humanPose.orientation.y, self.humanPose.orientation.z ,self.humanPose.orientation.w);
-        return Pose(humanPoint,humanQuat)
+        return self.getHumanPose();
         
     def visualizeFakeHuman(self):
         # Visualize the fake human:
@@ -203,6 +201,14 @@ class FakeHuman(EventSimulator):
                     scale=Vector3(0.3,0.3,0.3), header=Header(frame_id='odom_combined'),
                     color=ColorRGBA(1.0, 0.0, 0.0, 0.8))
         self.markerPublisher.publish(m)
+      
+    def getHumanPose(self):
+        '''
+        Make a snapshot copy of the (constantly updated) human pose.
+        '''
+        humanPoint = Point(self.humanPose.position.x, self.humanPose.position.y, self.humanPose.position.z)
+        humanQuat  = Quaternion(self.humanPose.orientation.x, self.humanPose.orientation.y, self.humanPose.orientation.z ,self.humanPose.orientation.w);
+        return Pose(humanPoint, humanQuat)
       
 def sigintHandler(signum, frame):
     human.stop();      
