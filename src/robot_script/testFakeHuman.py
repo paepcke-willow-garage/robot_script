@@ -61,9 +61,7 @@ def defaultPose(animation):
     rospy.loginfo('moved base')
     pr2.tiltHead(20,2, wait=False)
     rospy.loginfo('tilted')
-    pr2.rotateHead(-25, 2, wait=True)
-    rospy.loginfo('End of Default Pose')
-
+    pr2.rotateHead(-25, 2, wait=False)
     joints = ['l_shoulder_pan_joint','l_elbow_flex_joint', 'l_shoulder_lift_joint', 'l_forearm_roll_joint','l_wrist_flex_joint','l_upper_arm_roll_joint', 'l_wrist_roll_joint']
     values = [10,-125,70,90,-70,15, 0]
     pr2.moveArmJoint(joints,values, duration=2.0, wait=False)
@@ -72,6 +70,7 @@ def defaultPose(animation):
     pr2.moveArmJoint(joints,values, duration=2.0)
     pr2.setTorso(.02, 2.0)
     animation.sleep_while_running(5)
+    rospy.loginfo('End of Default Pose')
   
 def headKeepAlive(animation, motionPauseSecs):
     rospy.loginfo('Starting Head Keep Alive')
@@ -95,11 +94,6 @@ def sequence1(animation):
     rospy.loginfo('Starting sequence 1')
     pr2.setTorso(.02, 4)
     animation.sleep_while_running(6)
-    #DefaulPoseAnim.start()
-    animation.sleep_while_running(6)
-    while (True):
-        pass
-    
     rospy.loginfo('End of sequence 1')
 
 def sequence2(animation):
@@ -190,16 +184,17 @@ def main():
     
     state = NO_HUMANS
     
-    #DefaulPoseAnim.start()
+    defaulPoseAnim.start()
+    while not defaulPoseAnim.is_done():
+        time.sleep(0.01)
+    defaulPoseAnim.stop()
     
     #headKeepAlive(None)
     # Two seconds between the two head motions:
     # This is an example for a parallel function
     # taking an argument:
-    headKeepAliveAnim.start(5)
-    #****************8
-    sys.exit()
-    #****************8
+    
+    #headKeepAliveAnim.start(5)
     
     while (True):
         # Wait for a new position report from the human:
@@ -209,7 +204,6 @@ def main():
         humanAngle = pr2.getAngle(newHumanLocation)
         
         pr2.displayInfo('Robot state:' + state)
-        #print('Human now at ' + str(newHumanLocation))
         
         ## UPDATE THE STATE
         

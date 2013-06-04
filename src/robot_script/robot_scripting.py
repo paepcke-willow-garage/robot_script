@@ -875,10 +875,6 @@ class Motion():
         self.is_stopped = False
         
     def start(self, *args, **kwargs):
-        #if MotionRun.oneMotionRunning:
-        #    return;
-        #else:
-        
         self.args = args
         self.kwargs = kwargs
         
@@ -895,10 +891,12 @@ class Motion():
             rospy.logerr(msg)
             raise RuntimeError(msg)
         
-        #MotionRun.oneMotionRunning = True
         self.is_stopped = False
         self.motionRun = MotionRun(self, self.callable, self.args, self.kwargs)
         self.motionRun.start()
+
+    def is_done(self):
+        return self.motionRun.is_complete
         
     def stop(self):
         '''
@@ -907,7 +905,6 @@ class Motion():
         calls no-ops.
         '''
         PR2RobotScript.disengageGears();
-        #MotionRun.oneMotionRunning = False
         self.is_stopped = True
         
     def pause(self):
@@ -956,13 +953,15 @@ class MotionRun(threading.Thread):
         self.callable = callable
         self.args = args
         self.kwargs = kwargs
-        
         self.daemon = True
+        self.is_complete = True
         
     def start(self, ):
-       PR2RobotScript.engageGears();    
-       super(MotionRun, self).start();
-
+        MotionRun.oneMotionRunning = True
+        PR2RobotScript.engageGears();
+        super(MotionRun, self).start();
+        self.is_complete = False
+    
     def run(self):
         try:
             self.callable(self.parentMotion, *self.args, **self.kwargs);
@@ -970,6 +969,7 @@ class MotionRun(threading.Thread):
             rospy.logerr("In Motion: " + `e`)
         PR2RobotScript.engageGears();
         MotionRun.oneMotionRunning = False
+        self.is_complete = True
 
 def aboutEq(sensorName, val):
     sensorVal = PR2RobotScript.getSensorReading(sensorName);
