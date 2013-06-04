@@ -867,30 +867,26 @@ class PR2Base(object):
         while RobotBaseMotionThread.oneThreadRunning is not None:
             time.sleep(0.2);
 
-class ThreadInfo(object):
-    def __init__(self, callable, args, kwargs):
-        self.callable = callable
-        self.args = args
-        self.kwargs = kwargs
-
-
 class Motion():
     
-    def __init__(self, callable, *args, **kwargs):
-        self.runMotion = None
+    def __init__(self, callable):
+        self.motionRun = None
         self.callable = callable
-        self.args = args
-        self.kwargs = kwargs
         self.is_stopped = False
         
-    def start(self):
-        #if RunMotion.oneMotionRunning:
+    def start(self, *args, **kwargs):
+        #if MotionRun.oneMotionRunning:
         #    return;
         #else:
         
+        self.args = args
+        self.kwargs = kwargs
+        
         start = time.time()
         is_timedout = False
-        while (not is_timedout and RunMotion.oneMotionRunning):
+        # If a thread with this motion is already running,
+        # Wait for it to stop, or for 10 secionds:
+        while (not is_timedout and MotionRun.oneMotionRunning):
             is_timedout = (time.time()-start) > 10.0
             time.sleep(0.01)
         
@@ -899,14 +895,19 @@ class Motion():
             rospy.logerr(msg)
             raise RuntimeError(msg)
         
-        #RunMotion.oneMotionRunning = True
+        #MotionRun.oneMotionRunning = True
         self.is_stopped = False
-        self.runMotion = RunMotion(self, self.callable, self.args, self.kwargs)
-        self.runMotion.start()
+        self.motionRun = MotionRun(self, self.callable, self.args, self.kwargs)
+        self.motionRun.start()
         
     def stop(self):
+        '''
+        We cannot kill the thread, but by disengaging the gears, we
+        make all of the callable's robot commands and sleep_while_running
+        calls no-ops.
+        '''
         PR2RobotScript.disengageGears();
-        #RunMotion.oneMotionRunning = False
+        #MotionRun.oneMotionRunning = False
         self.is_stopped = True
         
     def pause(self):
@@ -929,12 +930,28 @@ class Motion():
         #print(str(threads))
         sys.exit()
 
-class RunMotion(threading.Thread):
+class MotionRun(threading.Thread):
     
     oneMotionRunning = False
    
-    def __init__(self, parentMotion, callable, *args, **kwargs):
-        super(RunMotion, self).__init__();
+    def __init__(self, parentMotion, callable, args, kwargs):
+        '''
+        Creates a thread that implements the parent Motion. Once this thread is started
+        via start(), the callable will be called once. Arguments and keyword arguments
+        will be passed to the callable as callable(parentMotion, *self.args, **self.kwargs.
+        That is the args parameter to this __init__ call must be a tuple, and the kwargs
+        must be a dictionary. 
+
+        @param parentMotion: The Motion instance that creates this MotionRun
+        @type parentMotion: Motion
+        @param callable: Function to call in this thread
+        @type callable: callable
+        @param args: arguments to pass to the callable
+        @type args: tuple
+        @param kwargs: keyword arguments to pass to the callable
+        @type kwargs: dict
+        '''
+        super(MotionRun, self).__init__();
         self.parentMotion = parentMotion
         self.callable = callable
         self.args = args
@@ -944,22 +961,15 @@ class RunMotion(threading.Thread):
         
     def start(self, ):
        PR2RobotScript.engageGears();    
-       super(RunMotion, self).start();
+       super(MotionRun, self).start();
 
     def run(self):
         try:
-#            if len(self.args) > 0 and len(self.kwargs) > 0: 
-#                self.callable(self.args, self.kwargs);
-#            elif len(self.args) > 0 and len(self.kwargs) == 0:
-#                self.callable(self.args);
-#            elif len(self.args) == 0 and len(self.kwargs) > 0:
-#                self.callable(self.kwargs);
-#            else:
-            self.callable(self.parentMotion);
+            self.callable(self.parentMotion, *self.args, **self.kwargs);
         except Exception as e:
             rospy.logerr("In Motion: " + `e`)
         PR2RobotScript.engageGears();
-        RunMotion.oneMotionRunning = False
+        MotionRun.oneMotionRunning = False
 
 def aboutEq(sensorName, val):
     sensorVal = PR2RobotScript.getSensorReading(sensorName);
