@@ -88,10 +88,13 @@ class FakeHuman(EventSimulator):
         super(FakeHuman, self).start(motionSchedule, self.update, repeat=True, callbackInterval=FRAME_INTERVAL);
 
     def publishTFPose(self, pose, name, parent):
-        if (pose != None):
-            self.tfBroadcaster.sendTransform((pose.position.x, pose.position.y, pose.position.z),
-                 (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w),
-                 rospy.Time.now(), name, parent)
+        if (pose != None)  and (not rospy.is_shutdown()):
+            try:
+                self.tfBroadcaster.sendTransform((pose.position.x, pose.position.y, pose.position.z),
+                     (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w),
+                     rospy.Time.now(), name, parent)
+            except rospy.ROSException:
+                rospy.loginfo("Fake human topic was closed during publish. Likely due to explicit shutdown request.")
 
     def getPlanarDistance(self, pose):
         '''
@@ -194,13 +197,16 @@ class FakeHuman(EventSimulator):
         
     def visualizeFakeHuman(self):
         # Visualize the fake human:
-        if (self.humanPose != None):
+        if (self.humanPose is not None):
             self.publishTFPose(self.humanPose, 'fake_human', 'odom_combined')
         
         m = Marker(type=Marker.SPHERE, id=0, lifetime=rospy.Duration(2), pose=self.humanPose,
                     scale=Vector3(0.3,0.3,0.3), header=Header(frame_id='odom_combined'),
                     color=ColorRGBA(1.0, 0.0, 0.0, 0.8))
-        self.markerPublisher.publish(m)
+        try:
+            self.markerPublisher.publish(m)
+        except rospy.ROSException:
+            rospy.loginfo("Publish to a closed topic. Likely due to explicit shutdown request")
       
     def getHumanPose(self):
         '''

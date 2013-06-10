@@ -283,7 +283,14 @@ class PR2RobotScript(RobotScript):
         PR2RobotScript.baseMovementPublisher = rospy.Publisher('base_controller/command', Twist)
 
     @staticmethod
+    def shutdown():
+        PR2RobotScript.sensor_observer.stop()
+        rospy.signal_shutdown("User program is explicitly shutting down the RobotScripting.")
+
+    @staticmethod
     def displayInfo(infoText):
+        if rospy.is_shutdown():
+            return;
         infoPose = Pose(Point(0,0,2.5), Quaternion(0,0,0,1))
         m = Marker(type=Marker.TEXT_VIEW_FACING, id=1000, lifetime=rospy.Duration(2), 
                    pose=infoPose,
@@ -765,7 +772,8 @@ class RobotBaseMotionThread(threading.Thread):
             
             # Time to send a Twist message to keep the base moving?
             timeNow = rospy.get_time();
-            if (timeNow - prevTwistSendTime) >= UPDATE_PERIOD:
+            if ((timeNow - prevTwistSendTime) >= UPDATE_PERIOD) and\
+                (not rospy.is_shutdown()):
                 PR2RobotScript.baseMovementPublisher.publish(twistMsg);
                 prevTwistSendTime = timeNow;
             time.sleep(valueCheckRate)
