@@ -363,11 +363,23 @@ class PR2RobotScript(RobotScript):
 
     @staticmethod
     def tiltHead(newTilt, duration=1.0, wait=True):
+        '''
+        This method tilts the head. However: note that before starting
+        the tilt, the method will wait till any pan that might be in 
+        progress is finished. This limitation is due to observed joint
+        reading inaccuracies when both pan and tilt are in motion.
+        For simultaneous pan and tilt, use method lookAt() instead.
+        @param newTilt:
+        @type newTilt:
+        @param duration:
+        @type duration:
+        '''
 
         if not PR2RobotScript.gearsEngaged:
             return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
+        
         # If currently moving head, must wait for that done,
         # else the reading for the pan that we are about
         # to do will be transient:
@@ -378,11 +390,23 @@ class PR2RobotScript(RobotScript):
             PR2RobotScript.waitFor('head_tilt_joint', newTilt);
         
     @staticmethod
-    def panHead(newPan, duration=1.0, wait=True):
+    def rotateHead(newPan, duration=1.0, wait=True):
+        '''
+        This method pans the head. However: note that before starting
+        the pan, the method will wait till any tilt that might be in 
+        progress is finished. This limitation is due to observed joint
+        reading inaccuracies when both pan and tilt are in motion.
+        For simultaneous pan and tilt, use method lookAt() instead.
+        @param newPan:
+        @type newPan:
+        @param duration:
+        @type duration:
+        '''
         if not PR2RobotScript.gearsEngaged:
             return;
         if not PR2RobotScript.initialized:
             PR2RobotScript.initialize()
+
         # If currently moving head, must wait for that done,
         # else the reading for the tilt that we are about
         # to do will be transient:
@@ -392,6 +416,7 @@ class PR2RobotScript(RobotScript):
         if wait:
             PR2RobotScript.waitFor('head_pan_joint', newPan);
      
+        
     @staticmethod
     def lookAt(pan, tilt, duration=1.0, wait=True):
         if not PR2RobotScript.gearsEngaged:
@@ -414,21 +439,6 @@ class PR2RobotScript(RobotScript):
         if wait:
             PR2RobotScript.head.wait_for();
      
-    @staticmethod
-    def rotateHead(newVal, duration=1.0, wait=True):
-        if not PR2RobotScript.gearsEngaged:
-            return;
-        if not PR2RobotScript.initialized:
-            PR2RobotScript.initialize()
-        # If currently moving head, must wait for that done,
-        # else the reading for the tilt that we are about
-        # to do will be transient:
-        PR2RobotScript.head.wait_for()
-        currTilt = PR2RobotScript.getSensorReading('head_tilt_joint');
-        PR2RobotScript.head.look(newVal, currTilt, dur=duration)
-        if wait:
-            PR2RobotScript.waitFor(['head_tilt_joint', 'head_pan_joint'], [currTilt, newVal]);
-        
     @staticmethod        
     def openGripper(side):
         if not PR2RobotScript.gearsEngaged:
