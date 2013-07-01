@@ -1,0 +1,16 @@
+<stack>
+  <description brief="robot_script">
+    robot_script is an experimental, very high-level scripting language
+    that allows non-programmers to program event driven behaviors for robots.
+  </description>
+  <author>Andreas Paepcke</author>
+  <license>BSD, LGPL, GPL</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/robot_script</url>
+
+  <depend stack="ros_comm" />
+  <depend stack="common_msgs" />
+  <depend stack="pr2_controllers" />
+  <depend stack="geometry" />
+
+</stack>
